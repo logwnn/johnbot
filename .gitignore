@@ -1,0 +1,5 @@
+.env
+memory.json
+logs
+*.log
+node_modules
