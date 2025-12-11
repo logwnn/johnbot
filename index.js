@@ -30,7 +30,7 @@ const MAX_MESSAGE_HISTORY = 8; // chat message context fed to model
 const MAX_RESPONSE_LENGTH = 2000; // discord char limit
 const MAX_RESPONSE_SENTENCES = 2; // use if bot is yapping
 const LLM_ENDPOINT = "https://router.huggingface.co/v1/chat/completions";
-const LLM_MODEL = "meta-llama/Llama-3.2-11B-Vision-Instruct";
+const LLM_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
 const HF_TOKEN = process.env.HF_TOKEN;
 const EDIT_THROTTLE_MS = 1200; // min ms between message edits
 const MAX_EDIT_RETRIES = 2; // when edit fails, retry up to N times
@@ -107,6 +107,7 @@ async function askModel(prompt, { onDelta } = {}) {
     model: LLM_MODEL,
     messages: [{ role: "user", content: prompt }],
     max_tokens: 200,
+    stream: true,
   };
   const res = await fetch(endpoint, {
     method: "POST",
@@ -118,105 +119,122 @@ async function askModel(prompt, { onDelta } = {}) {
   });
   if (!res.ok) {
     const text = await res.text();
-    logEvent("ERROR", `Model request failed | ${text}`);
     throw new Error("Error with Model: " + text);
   }
   let output = "";
+  // Streaming mode
   if (res.body && typeof res.body.getReader === "function") {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let done = false;
-    while (!done) {
-      const { value, done: chunkDone } = await reader.read();
-      done = chunkDone;
-      if (value) {
-        const chunk = decoder.decode(value, { stream: !done });
-        for (const line of chunk.split("\n")) {
-          if (!line.trim()) continue;
-          try {
-            const j = JSON.parse(line);
-            const delta = j.response || j.text || "";
-            if (delta) {
-              output += delta;
-              if (onDelta) {
-                try {
-                  await onDelta(delta, output);
-                } catch (e) {
-                  // ignore callback errors
-                }
-              }
-            }
-          } catch {
-            // if not json, treat as raw txt
-            output += line;
-            if (onDelta) {
-              try {
-                await onDelta(line, output);
-              } catch (e) {}
-            }
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // HF chunks are separated by "\n" containing lines like:
+      // data: {"choices":[{"delta":{"content":"H"}}]}
+      const lines = buffer.split("\n");
+      // Keep last partial line in buffer
+      buffer = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const jsonStr = trimmed.substring(5).trim();
+        if (jsonStr === "[DONE]") continue;
+        // Try HF OpenAI-style streaming first
+        try {
+          const data = JSON.parse(jsonStr);
+          // HF response looks like:
+          // data.choices[0].delta.content
+          const delta =
+            data?.choices?.[0]?.delta?.content ??
+            data?.response ??
+            data?.text ??
+            null;
+          if (delta) {
+            output += delta;
+            if (onDelta) await safeOnDelta(onDelta, delta, output);
+            continue;
           }
+        } catch {
+          // Ignore, fall through to Ollama fallback
+        }
+        // Fallback: Ollama-style JSON (your old system)
+        try {
+          const j = JSON.parse(jsonStr);
+          const delta = j.response || j.text || "";
+          if (delta) {
+            output += delta;
+            if (onDelta) await safeOnDelta(onDelta, delta, output);
+          }
+        } catch {
+          // Final fallback: raw text
+          output += jsonStr;
+          if (onDelta) await safeOnDelta(onDelta, jsonStr, output);
         }
       }
     }
-  } else {
-    // fallback: read whole body
-    output = await res.text();
-    if (onDelta) await onDelta(output, output);
   }
   return output;
+  async function safeOnDelta(cb, d, o) {
+    try {
+      await cb(d, o);
+    } catch {}
+  }
 }
 // function for analyzing image attachments
 async function analyzeImage(imageUrl, userID = null) {
+  return null;
   try {
-    logEvent("IMAGE-FETCH", `User fetching image from URL: ${imageUrl}`);
-    // fetch image
     const imgResp = await fetch(imageUrl);
     if (!imgResp.ok)
       throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
+
     const buffer = await imgResp.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
-    // build prompt safely NO mutation
-    let prompt = imageAnalysisPrompt;
-    if (userID) {
-      const mem = userMemory.get(userID) || {};
-      const energyTopics = (
-        mem.chat_context?.conversation_style?.topics_energized_about || []
-      ).slice(0, 2);
 
-      if (energyTopics.length > 0) {
-        prompt += ` Pay special attention to anything related to: ${energyTopics.join(
-          ", "
-        )}.`;
-      }
-    }
-    // build request
+    let prompt = imageAnalysisPrompt;
+
+    const messages = [
+      {
+        role: "user",
+        content: [
+          { type: "image", url: imageUrl }, // Image can be a URL or Base64 data
+          { type: "text", text: prompt },
+        ],
+      },
+    ];
     const body = {
-      model: "llava",
-      prompt: prompt,
-      images: [base64],
+      model: "Qwen/Qwen2-VL-7B-Instruct",
+      messages: messages,
+      max_tokens: 500,
+      stream: true,
     };
     const resp = await fetch(LLM_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${HF_TOKEN}`,
+      },
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error(await resp.text());
-    // stream reading
+    if (!resp.ok) {
+      throw new Error(await resp.text());
+    }
     let output = "";
-    if (resp.body && typeof resp.body.getReader === "function") {
+    if (resp.body?.getReader) {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
-      let done = false;
-      while (!done) {
-        const { value, done: finished } = await reader.read();
-        done = finished;
-        if (!value) continue;
-        const chunk = decoder.decode(value, { stream: !done });
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
         for (const line of chunk.split("\n")) {
           if (!line.trim()) continue;
           try {
             const json = JSON.parse(line);
-            output += json.response || json.text || "";
+            const delta = json.choices?.[0]?.delta?.content;
+            if (delta) output += delta;
           } catch {
             output += line;
           }
