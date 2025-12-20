@@ -3,21 +3,19 @@
 // Usage (PowerShell):
 // $env:DISCORD_TOKEN = "TOKEN"; $env:CLIENT_ID = "APPID"; $env:GUILD_ID = "OPTIONAL_GUILD_ID"; node .\scripts\clear-commands.js
 
-import("dotenv")
-  .then(() => {})
-  .catch(() => {});
+import dotenv from "dotenv";
 import fs from "fs";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
+
+dotenv.config();
 
 const TOKEN = process.env.DISCORD_TOKEN || process.env.BOT_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
 if (!TOKEN || !CLIENT_ID) {
-  console.error(
-    "Please set DISCORD_TOKEN (or BOT_TOKEN) and CLIENT_ID environment variables."
-  );
+  console.error("Please set DISCORD_TOKEN (or BOT_TOKEN) and CLIENT_ID environment variables.");
   process.exit(1);
 }
 
@@ -43,9 +41,7 @@ async function overwriteCommandsWithEmpty(targetGuildId) {
 
 async function deleteCommandById(commandId, targetGuildId) {
   if (targetGuildId) {
-    return rest.delete(
-      Routes.applicationGuildCommand(CLIENT_ID, targetGuildId, commandId)
-    );
+    return rest.delete(Routes.applicationGuildCommand(CLIENT_ID, targetGuildId, commandId));
   } else {
     return rest.delete(Routes.applicationCommand(CLIENT_ID, commandId));
   }
@@ -71,18 +67,10 @@ async function deleteCommandById(commandId, targetGuildId) {
 
     console.log("\nNo destructive action has been taken by default.");
     console.log("Options:");
-    console.log(
-      "  1) Overwrite global commands with an empty list (delete all global commands)"
-    );
-    console.log(
-      "  2) Overwrite guild commands with an empty list (delete all commands in that guild)"
-    );
-    console.log(
-      "  3) Delete one command by name (edit the script to set toDeleteName)"
-    );
-    console.log(
-      "\nTo perform an action, edit this file and uncomment the relevant section near the bottom."
-    );
+    console.log("  1) Overwrite global commands with an empty list (delete all global commands)");
+    console.log("  2) Overwrite guild commands with an empty list (delete all commands in that guild)");
+    console.log("  3) Delete one command by name (edit the script to set toDeleteName)");
+    console.log("\nTo perform an action, edit this file and uncomment the relevant section near the bottom.");
 
     // === Example actions (commented) ===
 

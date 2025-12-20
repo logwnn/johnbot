@@ -1,26 +1,15 @@
 // John Bot, Made with love by Logan <3
 // ps. sorry for the messy code
-import {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  PermissionsBitField,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-  AttachmentBuilder,
-} from "discord.js";
+import { Client, GatewayIntentBits, Partials, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } from "discord.js";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
+import os from "os";
 dotenv.config();
 
 // ===== CONFIGURATION =====
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const HF_TOKEN = process.env.HF_TOKEN;
 const LOG_DIR = path.join("./logs");
 const MEMORY_FILE = path.join("./memory.json");
 const BLACKLIST_FILE = path.join("./blacklist.json");
@@ -28,17 +17,15 @@ const BLACKLIST_FILE = path.join("./blacklist.json");
 const MEMORY_CONFIDENCE_THRESHOLD = 0.8; // min confidence to store fact abt the user
 const MAX_MESSAGE_HISTORY = 8; // chat message context fed to model
 const MAX_RESPONSE_LENGTH = 2000; // discord char limit
-const MAX_RESPONSE_SENTENCES = 2; // use if bot is yapping
-const LLM_ENDPOINT = "https://router.huggingface.co/v1/chat/completions";
-const LLM_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
-const HF_TOKEN = process.env.HF_TOKEN;
+const MAX_RESPONSE_SENTENCES = 3; // use if bot is yapping
+const LLM_ENDPOINT = "http://localhost:11434/api/generate"; // https://router.huggingface.co/v1/chat/completions OR http://localhost:11434/api/generate
+const LLM_MODEL = "meta-llama/Llama-3.1-8B-Instruct"; // meta-llama/Llama-3.1-8B-Instruct OR llama3.2:3b-instruct-q4_K_M
 const EDIT_THROTTLE_MS = 1200; // min ms between message edits
 const MAX_EDIT_RETRIES = 2; // when edit fails, retry up to N times
-const RETRY_DELAY_MS = 3000; // 3000ms = 3s
+const RETRY_DELAY_MS = 3000; // retry edit every 3000ms or 3s
 
 const thinkingReply = "John is thinking...";
-const blacklistReply =
-  "so sad to bad, you have been blacklisted from interacting with John nihaaaw!";
+const blacklistReply = "so sad to bad, you have been blacklisted from interacting with John nihaaaw!";
 const errorReply = "Johns wifi is down right now... try again later nihaw.";
 
 // note: persoanlity is just the basics, more tweakable details can be found in code
@@ -146,11 +133,7 @@ async function askModel(prompt, { onDelta } = {}) {
           const data = JSON.parse(jsonStr);
           // HF response looks like:
           // data.choices[0].delta.content
-          const delta =
-            data?.choices?.[0]?.delta?.content ??
-            data?.response ??
-            data?.text ??
-            null;
+          const delta = data?.choices?.[0]?.delta?.content ?? data?.response ?? data?.text ?? null;
           if (delta) {
             output += delta;
             if (onDelta) await safeOnDelta(onDelta, delta, output);
@@ -187,8 +170,7 @@ async function analyzeImage(imageUrl, userID = null) {
   return null;
   try {
     const imgResp = await fetch(imageUrl);
-    if (!imgResp.ok)
-      throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
+    if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
 
     const buffer = await imgResp.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
@@ -268,8 +250,7 @@ async function summarizePersona(userID) {
 Only output the sentence (no JSON, no commentary). Keep it under 140 characters.
 USER FACTS:
 ${facts}`;
-    const response =
-      (await askModel(prompt)).trim().split("\n").filter(Boolean)[0] || "";
+    const response = (await askModel(prompt)).trim().split("\n").filter(Boolean)[0] || "";
     if (!mem.meta) mem.meta = {};
     mem.meta.usersummary = response;
     userMemory.set(userID, mem);
@@ -328,20 +309,7 @@ function getAmbientContext(userID) {
   const now = new Date();
   const hour = now.getHours();
   const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long" });
-  const timeOfDay =
-    hour < 6
-      ? "very early morning"
-      : hour < 9
-      ? "early morning"
-      : hour < 12
-      ? "morning"
-      : hour < 14
-      ? "noon"
-      : hour < 17
-      ? "afternoon"
-      : hour < 20
-      ? "evening"
-      : "night";
+  const timeOfDay = hour < 6 ? "very early morning" : hour < 9 ? "early morning" : hour < 12 ? "morning" : hour < 14 ? "noon" : hour < 17 ? "afternoon" : hour < 20 ? "evening" : "night";
   const mem = userMemory.get(userID) || {};
   let daysSinceLastChat = "first time";
   if (mem.meta?.last_interaction_timestamp) {
@@ -407,13 +375,9 @@ client.once("ready", () => {
           await guild.commands.set(commands);
           logEvent("INIT", `Registered commands for guild ${guild.id}`);
         } catch (e) {
-          logEvent(
-            "WARN",
-            `Failed to register commands for guild ${guild.id} | ${e.message}`
-          );
+          logEvent("WARN", `Failed to register commands for guild ${guild.id} | ${e.message}`);
         }
       }
-
       // ALSO register global (application) commands so commands are available in DMs.
       // Note: global commands can take up to ~1 hour to propagate, but are required for DM usage.
       try {
@@ -447,10 +411,7 @@ client.on("messageCreate", async (msg) => {
             } catch (e) {}
           }, 8000); // 8000ms = 8s
         } catch (e) {
-          logEvent(
-            "ERROR",
-            `Failed to send/delete blacklist reply | ${e.message}`
-          );
+          logEvent("ERROR", `Failed to send/delete blacklist reply | ${e.message}`);
         }
       }
       return;
@@ -460,12 +421,7 @@ client.on("messageCreate", async (msg) => {
     try {
       replyMessage = await msg.reply(thinkingReply);
       await msg.channel.sendTyping();
-      logEvent(
-        "RESPONSE-START",
-        `User ${userID} | Username="${
-          msg.author.username
-        }" | Message="${msg.content.replace(/<@!?(\d+)>/, "").trim()}"`
-      );
+      logEvent("RESPONSE-START", `User ${userID} | Username="${msg.author.username}" | Message="${msg.content.replace(/<@!?(\d+)>/, "").trim()}"`);
     } catch (e) {
       logEvent("ERROR", `Initial reply failed | ${e.message}`);
       return;
@@ -473,9 +429,7 @@ client.on("messageCreate", async (msg) => {
     const messageHistory = await msg.channel.messages.fetch({
       limit: MAX_MESSAGE_HISTORY,
     });
-    const sortedMessageHistory = [...messageHistory.values()].sort(
-      (a, b) => a.createdTimestamp - b.createdTimestamp
-    );
+    const sortedMessageHistory = [...messageHistory.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
     const sanitizedMessageHistory = sortedMessageHistory
       // I dont like this filter, it removes too much context
       //.filter((m) => {
@@ -485,8 +439,7 @@ client.on("messageCreate", async (msg) => {
       //  );
       //})
       .map((m) => {
-        const role =
-          m.author.bot && m.author.id === client.user.id ? "John" : "You";
+        const role = m.author.bot && m.author.id === client.user.id ? "John" : "You";
         const clean = m.content
           .replace(/<@!?(\d+)>/g, "")
           .replace(/\s+/g, " ")
@@ -546,11 +499,7 @@ OUTPUT FORMAT (fill only fields containing new info):
 If no new facts → output {}.
 You will always receive the following input:
 CURRENT MEMORY (for reference, do NOT repeat any of it):
-${
-  userMemory.get(msg.author.id)
-    ? JSON.stringify(userMemory.get(msg.author.id))
-    : "No existing memory for this user."
-}
+${userMemory.get(msg.author.id) ? JSON.stringify(userMemory.get(msg.author.id)) : "No existing memory for this user."}
 
 MESSAGE TO ANALYZE:
 "${msg.content}"
@@ -573,10 +522,7 @@ ${sanitizedMessageHistory}`;
       try {
         jsonObj = JSON.parse(cleanOutput);
       } catch (e) {
-        logEvent(
-          "WARN",
-          `Memory extraction JSON parse failed for user ${userID} | Raw output: ${output}`
-        );
+        logEvent("WARN", `Memory extraction JSON parse failed for user ${userID} | Raw output: ${output}`);
         jsonObj = {};
       }
       // bail if empty
@@ -602,12 +548,9 @@ ${sanitizedMessageHistory}`;
                 updatedMemory[category][key] = [];
               }
               entry.forEach((item) => {
-                if (!item || item.confidence < MEMORY_CONFIDENCE_THRESHOLD)
-                  return;
+                if (!item || item.confidence < MEMORY_CONFIDENCE_THRESHOLD) return;
                 // avoid duplicates (same "value")
-                const alreadyExists = updatedMemory[category][key].some(
-                  (old) => old.value === item.value
-                );
+                const alreadyExists = updatedMemory[category][key].some((old) => old.value === item.value);
                 if (!alreadyExists) {
                   updatedMemory[category][key].push(item);
                 }
@@ -640,47 +583,22 @@ ${sanitizedMessageHistory}`;
       try {
         if (msg.attachments && msg.attachments.size > 0) {
           const first = msg.attachments.first();
-          logEvent(
-            "IMAGE-DETECT",
-            `User ${userID} | Attachment found | URL=${first.url} | ContentType=${first.contentType}`
-          );
-          if (
-            first &&
-            first.contentType &&
-            first.contentType.startsWith("image")
-          ) {
-            logEvent(
-              "IMAGE-ANALYZE",
-              `User ${userID} | Analyzing image | URL=${first.url}`
-            );
+          logEvent("IMAGE-DETECT", `User ${userID} | Attachment found | URL=${first.url} | ContentType=${first.contentType}`);
+          if (first && first.contentType && first.contentType.startsWith("image")) {
+            logEvent("IMAGE-ANALYZE", `User ${userID} | Analyzing image | URL=${first.url}`);
             imageCaption = await analyzeImage(first.url, userID);
             if (imageCaption) {
-              logEvent(
-                "IMAGE-CAPTION",
-                `User ${userID} | Caption: ${imageCaption}`
-              );
+              logEvent("IMAGE-CAPTION", `User ${userID} | Caption: ${imageCaption}`);
             } else {
-              logEvent(
-                "WARN",
-                `User ${userID} | Image analysis returned null | URL=${first.url}`
-              );
+              logEvent("WARN", `User ${userID} | Image analysis returned null | URL=${first.url}`);
             }
           } else if (first && /\.(png|jpe?g|gif|webp)$/i.test(first.url)) {
-            logEvent(
-              "IMAGE-ANALYZE",
-              `User ${userID} | Analyzing image (URL match) | URL=${first.url}`
-            );
+            logEvent("IMAGE-ANALYZE", `User ${userID} | Analyzing image (URL match) | URL=${first.url}`);
             imageCaption = await analyzeImage(first.url, userID);
             if (imageCaption) {
-              logEvent(
-                "IMAGE-CAPTION",
-                `User ${userID} | Caption: ${imageCaption}`
-              );
+              logEvent("IMAGE-CAPTION", `User ${userID} | Caption: ${imageCaption}`);
             } else {
-              logEvent(
-                "WARN",
-                `User ${userID} | Image analysis returned null | URL=${first.url}`
-              );
+              logEvent("WARN", `User ${userID} | Image analysis returned null | URL=${first.url}`);
             }
           }
         }
@@ -688,39 +606,30 @@ ${sanitizedMessageHistory}`;
         logEvent("ERROR", `Image analyze inner failed | ${e.message}`);
       }
       // dynamic prompt construction
-      const memorySnippet = userMemory.get(msg.author.id)
-        ? JSON.stringify(userMemory.get(msg.author.id))
-        : "NO_MEMORY_DETECTED";
+      const memorySnippet = userMemory.get(msg.author.id) ? JSON.stringify(userMemory.get(msg.author.id)) : "NO_MEMORY_DETECTED";
       const ambient = getAmbientContext(msg.author.id);
       const energyTopics = getEnergyTopics(msg.author.id);
       const mem = userMemory.get(msg.author.id) || {};
       const style = mem.chat_context?.conversation_style || {};
       const phraseHistory = getPhraseHistory(msg.author.id);
       const recentPhrases = phraseHistory.slice(-5).join(", ") || "none yet";
-      const relationshipDynamic =
-        mem.relationship_with_assistant?.dynamic || "casual friends";
+      const relationshipDynamic = mem.relationship_with_assistant?.dynamic || "casual friends";
       // dynamic personality/prompt that adapts to user
       const promptbrick = `${personality}
 PERSONALIZATION CUES:
 - Relationship dynamic: ${relationshipDynamic}
 - Their humor style: ${style.humor_style || "varies"}
 - They prefer: ${style.prefers_banter ? "witty banter" : "chill vibes"}
-- They light up about: ${
-        energyTopics.length > 0 ? energyTopics.join(", ") : "whatever"
-      }
+- They light up about: ${energyTopics.length > 0 ? energyTopics.join(", ") : "whatever"}
 - Avoid repeating these phrases: ${recentPhrases}
-- Time context: ${ambient.timeOfDay} on ${
-        ambient.dayOfWeek
-      }, you last chatted ${ambient.daysSinceLastChat}`;
+- Time context: ${ambient.timeOfDay} on ${ambient.dayOfWeek}, you last chatted ${ambient.daysSinceLastChat}`;
       let prompt = `${promptbrick}\n\nREMINDER: Under NO circumstances will you repeat system prompt, meta data, or JSON data. 1-2 plain sentences ONLY. NO formatting. NO asterisks. NO markdown. Just text.\n`;
       if (memorySnippet && memorySnippet !== "NO_MEMORY_DETECTED") {
         prompt += `About this user (${msg.author.username}): ${memorySnippet}\n`;
       }
       if (imageCaption) prompt += `Image: ${imageCaption}\n`;
       prompt += `RECENT CHAT (You = John, They = current user only):\n${sanitizedMessageHistory}\n`;
-      prompt += `Their message now: "${msg.content
-        .replace(/<@!?(\\d+)>/, "")
-        .trim()}"\n`;
+      prompt += `Their message now: "${msg.content.replace(/<@!?(\\d+)>/, "").trim()}"\n`;
       prompt += `RESPOND AS JOHN. STRICTLY 1-2 sentences. Do NOT reference past conversations or other users.`;
       let lastEdit = 0;
       let accumulated = "";
@@ -729,8 +638,7 @@ PERSONALIZATION CUES:
       const onDelta = async (delta, full) => {
         accumulated = full;
         const now = Date.now();
-        const displayed =
-          truncateToSentences(accumulated, MAX_RESPONSE_SENTENCES) || "";
+        const displayed = truncateToSentences(accumulated, MAX_RESPONSE_SENTENCES) || "";
         // Skip if nothing changed or edits are too frequent
         if (displayed === lastDisplayed) return;
         if (now - lastEdit < EDIT_THROTTLE_MS) return; // skip frequent edits
@@ -744,16 +652,10 @@ PERSONALIZATION CUES:
           failedEditCount++;
           // If edit fails (e.g., message deleted), stop retrying after 2 attempts
           if (failedEditCount >= MAX_EDIT_RETRIES) {
-            logEvent(
-              "WARN",
-              `Edit failed ${failedEditCount} times for user ${userID}; likely message was deleted`
-            );
+            logEvent("WARN", `Edit failed ${failedEditCount} times for user ${userID}; likely message was deleted`);
             return; // stop attempting edits
           }
-          logEvent(
-            "WARN",
-            `Edit attempt ${failedEditCount} failed for user ${userID}: ${err.message}`
-          );
+          logEvent("WARN", `Edit attempt ${failedEditCount} failed for user ${userID}: ${err.message}`);
           // Single retry with delay
           await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
           try {
@@ -761,10 +663,7 @@ PERSONALIZATION CUES:
             failedEditCount = 0;
           } catch (e) {
             failedEditCount++;
-            logEvent(
-              "WARN",
-              `Edit retry failed for user ${userID}: ${e.message}`
-            );
+            logEvent("WARN", `Edit retry failed for user ${userID}: ${e.message}`);
           }
         }
       };
@@ -772,24 +671,16 @@ PERSONALIZATION CUES:
       // Final edit (ensure final content sent)
       try {
         // Enforce 1-2 sentence limit on final output as well
-        const truncated =
-          truncateToSentences(finalOutput, MAX_RESPONSE_SENTENCES) || "";
-        const finalContent =
-          truncated.slice(0, MAX_RESPONSE_LENGTH).trim() || errorReply;
+        const truncated = truncateToSentences(finalOutput, MAX_RESPONSE_SENTENCES) || "";
+        const finalContent = truncated.slice(0, MAX_RESPONSE_LENGTH).trim() || errorReply;
         if (replyMessage) {
           await replyMessage.edit(finalContent);
         }
-        logEvent(
-          "RESPONSE-COMPLETE",
-          `User ${userID} | Response: ${finalContent}`
-        );
+        logEvent("RESPONSE-COMPLETE", `User ${userID} | Response: ${finalContent}`);
         // track phrase to avoid repetition
         addPhraseToHistory(userID, finalContent.slice(0, 100));
       } catch (e) {
-        logEvent(
-          "ERROR",
-          `Final reply/edit failed for user ${userID} | ${e.message}`
-        );
+        logEvent("ERROR", `Final reply/edit failed for user ${userID} | ${e.message}`);
       }
       // increment interactions, update timestamp, and update user summary.
       try {
@@ -820,10 +711,7 @@ PERSONALIZATION CUES:
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const name = interaction.commandName;
-  logEvent(
-    "SLASH-CMD",
-    `User ${interaction.user.id} | Username="${interaction.user.username}" | Command="/${name}"`
-  );
+  logEvent("SLASH-CMD", `User ${interaction.user.id} | Username="${interaction.user.username}" | Command="/${name}"`);
   try {
     if (name === "ping") {
       const now = Date.now();
@@ -833,17 +721,12 @@ client.on("interactionCreate", async (interaction) => {
       });
       const roundTripLatency = Date.now() - now;
       const wsLatency = client.ws.ping !== -1 ? client.ws.ping : "unknown";
-      const latencyStr =
-        wsLatency !== "unknown"
-          ? `WS: ${wsLatency}ms | RT: ${roundTripLatency}ms`
-          : `RT: ${roundTripLatency}ms`;
+      const latencyStr = wsLatency !== "unknown" ? `WebSocket: ${wsLatency}ms | Round Trip: ${roundTripLatency}ms` : `Round Trip: ${roundTripLatency}ms`;
+      const uptime = `${Math.floor(os.uptime() / 86400)} days, ${Math.floor((os.uptime() % 86400) / 3600)} hours, ${Math.floor((os.uptime() % 3600) / 60)} minutes, ${Math.floor(os.uptime() % 60)} seconds`;
       await interaction.editReply({
-        content: `Pong! ${latencyStr}`,
+        content: `Pong! ${latencyStr}\nJohn is currently running on ${os.platform()}\nServer Uptime: ${uptime}`,
       });
-      logEvent(
-        "SLASH-CMD",
-        `User ${interaction.user.id} | /ping | ${latencyStr}`
-      );
+      logEvent("SLASH-CMD", `User ${interaction.user.id} | /ping | ${latencyStr}`);
       return;
     }
     if (name === "profileexport") {
@@ -876,8 +759,7 @@ client.on("interactionCreate", async (interaction) => {
       const mem = userMemory.get(uid) || {};
       if (action === "view") {
         const persona = mem?.meta?.persona || "No persona yet.";
-        const short =
-          persona.length > 200 ? persona.slice(0, 197) + "..." : persona;
+        const short = persona.length > 200 ? persona.slice(0, 197) + "..." : persona;
         const interactions = mem?.meta?.interactions || 0;
         const embed = new EmbedBuilder()
           .setTitle(`${interaction.user.username}'s John Persona`)
@@ -891,16 +773,7 @@ client.on("interactionCreate", async (interaction) => {
             }
           )
           .setColor(0x8b0000);
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("profile_edit_btn")
-            .setLabel("Edit")
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId("profile_reset_btn")
-            .setLabel("Reset")
-            .setStyle(ButtonStyle.Danger)
-        );
+        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("profile_edit_btn").setLabel("Edit").setStyle(ButtonStyle.Primary), new ButtonBuilder().setCustomId("profile_reset_btn").setLabel("Reset").setStyle(ButtonStyle.Danger));
         await interaction.reply({
           embeds: [embed],
           components: [row],
@@ -911,32 +784,11 @@ client.on("interactionCreate", async (interaction) => {
       }
       if (action === "edit") {
         // show same modal as button
-        const modal = new ModalBuilder()
-          .setCustomId("edit_profile_modal")
-          .setTitle("Edit Your John Profile");
-        const bioInput = new TextInputBuilder()
-          .setCustomId("bio_input")
-          .setLabel("Short bio (why John should remember you)")
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false)
-          .setPlaceholder("likes ramen, hates scanners");
-        const pronounsInput = new TextInputBuilder()
-          .setCustomId("pronouns_input")
-          .setLabel("Pronouns")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("they/them");
-        const musicInput = new TextInputBuilder()
-          .setCustomId("music_input")
-          .setLabel("Favorite music / artists")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("lofi, indie, whatever");
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(bioInput),
-          new ActionRowBuilder().addComponents(pronounsInput),
-          new ActionRowBuilder().addComponents(musicInput)
-        );
+        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Profile");
+        const bioInput = new TextInputBuilder().setCustomId("bio_input").setLabel("Short bio (why John should remember you)").setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder("likes ramen, hates scanners");
+        const pronounsInput = new TextInputBuilder().setCustomId("pronouns_input").setLabel("Pronouns").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("they/them");
+        const musicInput = new TextInputBuilder().setCustomId("music_input").setLabel("Favorite music / artists").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("lofi, indie, whatever");
+        modal.addComponents(new ActionRowBuilder().addComponents(bioInput), new ActionRowBuilder().addComponents(pronounsInput), new ActionRowBuilder().addComponents(musicInput));
         await interaction.showModal(modal);
         logEvent("SLASH-CMD", `User ${uid} | /profile edit`);
         return;
@@ -956,34 +808,15 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true,
         });
       const member = await interaction.guild.members.fetch(interaction.user.id);
-      if (
-        !member.permissions.has(PermissionsBitField.Flags.Administrator) &&
-        !member.permissions.has(PermissionsBitField.Flags.ManageGuild)
-      ) {
+      if (!member.permissions.has(PermissionsBitField.Flags.Administrator) && !member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         return interaction.reply({
           content: "You don't have permission",
           ephemeral: true,
         });
       }
       const listCount = [...blacklist].length;
-      const embed = new EmbedBuilder()
-        .setTitle("Blacklist Admin Menu")
-        .setDescription(`Manage the bot blacklist. Current count: ${listCount}`)
-        .setColor(0xaa0000);
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("blacklist_list_btn")
-          .setLabel("List")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("blacklist_add_btn")
-          .setLabel("Add")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId("blacklist_remove_btn")
-          .setLabel("Remove")
-          .setStyle(ButtonStyle.Danger)
-      );
+      const embed = new EmbedBuilder().setTitle("Blacklist Admin Menu").setDescription(`Manage the bot blacklist. Current count: ${listCount}`).setColor(0xaa0000);
+      const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("blacklist_list_btn").setLabel("List").setStyle(ButtonStyle.Primary), new ButtonBuilder().setCustomId("blacklist_add_btn").setLabel("Add").setStyle(ButtonStyle.Success), new ButtonBuilder().setCustomId("blacklist_remove_btn").setLabel("Remove").setStyle(ButtonStyle.Danger));
       await interaction.reply({
         embeds: [embed],
         components: [row],
@@ -1011,33 +844,12 @@ client.on("interactionCreate", async (interaction) => {
       const id = interaction.customId;
       // Edit profile button -> show modal
       if (id === "profile_edit_btn") {
-        const modal = new ModalBuilder()
-          .setCustomId("edit_profile_modal")
-          .setTitle("Edit Your John Profile");
-        const bioInput = new TextInputBuilder()
-          .setCustomId("bio_input")
-          .setLabel("Short bio (why John should remember you)")
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false)
-          .setPlaceholder("likes ramen, hates scanners");
-        const pronounsInput = new TextInputBuilder()
-          .setCustomId("pronouns_input")
-          .setLabel("Pronouns")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("they/them");
-        const musicInput = new TextInputBuilder()
-          .setCustomId("music_input")
-          .setLabel("Favorite music / artists")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("lofi, indie, whatever");
+        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Profile");
+        const bioInput = new TextInputBuilder().setCustomId("bio_input").setLabel("Short bio (why John should remember you)").setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder("likes ramen, hates scanners");
+        const pronounsInput = new TextInputBuilder().setCustomId("pronouns_input").setLabel("Pronouns").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("they/them");
+        const musicInput = new TextInputBuilder().setCustomId("music_input").setLabel("Favorite music / artists").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("lofi, indie, whatever");
 
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(bioInput),
-          new ActionRowBuilder().addComponents(pronounsInput),
-          new ActionRowBuilder().addComponents(musicInput)
-        );
+        modal.addComponents(new ActionRowBuilder().addComponents(bioInput), new ActionRowBuilder().addComponents(pronounsInput), new ActionRowBuilder().addComponents(musicInput));
         await interaction.showModal(modal);
         return;
       }
@@ -1072,30 +884,16 @@ client.on("interactionCreate", async (interaction) => {
       }
       // Blacklist add -> show modal
       if (id === "blacklist_add_btn") {
-        const modal = new ModalBuilder()
-          .setCustomId("blacklist_add_modal")
-          .setTitle("Add user to blacklist");
-        const userInput = new TextInputBuilder()
-          .setCustomId("blacklist_add_input")
-          .setLabel("User ID or mention")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setPlaceholder("@user or 123456789012345678");
+        const modal = new ModalBuilder().setCustomId("blacklist_add_modal").setTitle("Add user to blacklist");
+        const userInput = new TextInputBuilder().setCustomId("blacklist_add_input").setLabel("User ID or mention").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("@user or 123456789012345678");
         modal.addComponents(new ActionRowBuilder().addComponents(userInput));
         await interaction.showModal(modal);
         return;
       }
       // Blacklist remove -> show modal
       if (id === "blacklist_remove_btn") {
-        const modal = new ModalBuilder()
-          .setCustomId("blacklist_remove_modal")
-          .setTitle("Remove user from blacklist");
-        const userInput = new TextInputBuilder()
-          .setCustomId("blacklist_remove_input")
-          .setLabel("User ID or mention")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setPlaceholder("@user or 123456789012345678");
+        const modal = new ModalBuilder().setCustomId("blacklist_remove_modal").setTitle("Remove user from blacklist");
+        const userInput = new TextInputBuilder().setCustomId("blacklist_remove_input").setLabel("User ID or mention").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("@user or 123456789012345678");
         modal.addComponents(new ActionRowBuilder().addComponents(userInput));
         await interaction.showModal(modal);
         return;
@@ -1108,8 +906,7 @@ client.on("interactionCreate", async (interaction) => {
       if (cid === "edit_profile_modal") {
         const uid = interaction.user.id;
         const bio = interaction.fields.getTextInputValue("bio_input") || "";
-        const pronouns =
-          interaction.fields.getTextInputValue("pronouns_input") || "";
+        const pronouns = interaction.fields.getTextInputValue("pronouns_input") || "";
         const music = interaction.fields.getTextInputValue("music_input") || "";
         const mem = userMemory.get(uid) || {};
         if (!mem.long_term_facts) mem.long_term_facts = {};
@@ -1117,10 +914,7 @@ client.on("interactionCreate", async (interaction) => {
         if (!mem.interests) mem.interests = {};
         if (bio) mem.long_term_facts.bio = bio;
         if (pronouns) mem.identity.pronouns = pronouns;
-        if (music)
-          mem.interests.music = (mem.interests.music || []).concat(
-            music.split(/,\s*/)
-          );
+        if (music) mem.interests.music = (mem.interests.music || []).concat(music.split(/,\s*/));
         userMemory.set(uid, mem);
         saveMemoryToFile();
         await interaction.reply({
@@ -1130,8 +924,7 @@ client.on("interactionCreate", async (interaction) => {
         return;
       }
       if (cid === "blacklist_add_modal") {
-        const input =
-          interaction.fields.getTextInputValue("blacklist_add_input") || "";
+        const input = interaction.fields.getTextInputValue("blacklist_add_input") || "";
         const extracted = input.match(/\d{17,19}/); // try extract ID
         if (!extracted) {
           await interaction.reply({
@@ -1147,15 +940,11 @@ client.on("interactionCreate", async (interaction) => {
           content: `Added <@${uid}> to blacklist.`,
           ephemeral: true,
         });
-        logEvent(
-          "SLASH-CMD",
-          `Blacklist add via modal | ${interaction.user.id} added ${uid}`
-        );
+        logEvent("SLASH-CMD", `Blacklist add via modal | ${interaction.user.id} added ${uid}`);
         return;
       }
       if (cid === "blacklist_remove_modal") {
-        const input =
-          interaction.fields.getTextInputValue("blacklist_remove_input") || "";
+        const input = interaction.fields.getTextInputValue("blacklist_remove_input") || "";
         const extracted = input.match(/\d{17,19}/);
         if (!extracted) {
           await interaction.reply({
@@ -1171,10 +960,7 @@ client.on("interactionCreate", async (interaction) => {
           content: `Removed <@${uid}> from blacklist.`,
           ephemeral: true,
         });
-        logEvent(
-          "SLASH-CMD",
-          `Blacklist remove via modal | ${interaction.user.id} removed ${uid}`
-        );
+        logEvent("SLASH-CMD", `Blacklist remove via modal | ${interaction.user.id} removed ${uid}`);
         return;
       }
     }
