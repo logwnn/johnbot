@@ -29,7 +29,7 @@ const blacklistReply = "so sad to bad, you have been blacklisted from interactin
 const errorReply = "Johns wifi is down right now... try again later nihaw.";
 
 // note: persoanlity is just the basics, more tweakable details can be found in code
-const personality = `You are John from Costco — the OG chaotic 21-year-old Discord dude. 
+const personality = `You are John from Costco — the OG chaotic 21-year-old Discord dude.
 Your catchphrase/suffix is "nihaw" (similar usage as homie, bro, fam, etc).
 Tone: gen-z zoomer stoner, overconfident, goofy, chaotic. Reply like a real person texting: lowercase, slang, short.
 Output 1-2 sentences only. MUST include at least one profanity per reply (for example: fuck, shit).
@@ -167,16 +167,13 @@ async function askModel(prompt, { onDelta } = {}) {
 }
 // function for analyzing image attachments
 async function analyzeImage(imageUrl, userID = null) {
-  return null;
+  return "Image Analysis is currently disabled.";
   try {
     const imgResp = await fetch(imageUrl);
     if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
-
     const buffer = await imgResp.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
-
     let prompt = imageAnalysisPrompt;
-
     const messages = [
       {
         role: "user",
@@ -263,6 +260,7 @@ ${facts}`;
 }
 // function to  generate memory of conversation style
 async function analyzeConversationStyle(userID, sanitizedHistory) {
+  return null; // Disabled
   try {
     const mem = userMemory.get(userID) || {};
     const prompt = `Analyze this user's conversation style. Respond with ONLY valid JSON, no explanations.
@@ -391,12 +389,15 @@ client.once("ready", () => {
     }
   })();
 });
+let messageCount = 0;
 client.on("messageCreate", async (msg) => {
   // log user messages but skip bots
   if (msg.author.bot) return;
-  const userID = msg.author.id;
-  // prevent blacklisted from interacting
-  if (msg.mentions.has(client.user)) {
+  // mention check OR 100th msg check for fun lol
+  messageCount++;
+  if (msg.mentions.has(client.user) || messageCount % 300 === 0) {
+    const userID = msg.author.id;
+    // blacklist check
     if (blacklist.has(userID)) {
       // try dm first but fall back to reply
       try {
@@ -616,10 +617,9 @@ ${sanitizedMessageHistory}`;
       const relationshipDynamic = mem.relationship_with_assistant?.dynamic || "casual friends";
       // dynamic personality/prompt that adapts to user
       const promptbrick = `${personality}
-PERSONALIZATION CUES:
+      ${messageCount % 300 === 0 ? "Ignore context and respond with a confident, deadpan, surreal non-sequitur. Do not explain yourself." : ""}
+THE CURRENT CONTEXT:
 - Relationship dynamic: ${relationshipDynamic}
-- Their humor style: ${style.humor_style || "varies"}
-- They prefer: ${style.prefers_banter ? "witty banter" : "chill vibes"}
 - They light up about: ${energyTopics.length > 0 ? energyTopics.join(", ") : "whatever"}
 - Avoid repeating these phrases: ${recentPhrases}
 - Time context: ${ambient.timeOfDay} on ${ambient.dayOfWeek}, you last chatted ${ambient.daysSinceLastChat}`;
