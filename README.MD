@@ -9,22 +9,32 @@ Discord bot that uses LLM to respond to messages when pinged
 - Node.js >= 16.9 (Node 18+ recommended)
 - Discord bot token
 - HuggingFace token
-### Optional:
+Optional:
 - ClientID from ur bot
 - GuildID from ur Discord server
 
 ---
 
-## How to use
-
+## Usage
 1. Create a `.env` file in the repo root with the following variables:
-
 ```env
 DISCORD_TOKEN=your_discord_token_here
 HF_TOKEN=your_hf_token_here
 CLIENT_ID=your_discord_app_id # optional, used by scripts/clear-commands.js
 GUILD_ID=optional_guild_id    # optional, used by scripts/clear-commands.js
 ```
+- Install requirments with `npm install` then run with `node index.js` or `node .`
+- Mention the bot or use any of the slash commands. Mentions also work in direct-messages.
+- Slash commands:
+  - `/ping` — latency & uptime
+  - `/profile` — view/edit/reset your saved profile (modal-based)
+  - `/profileexport` — download your profile JSON (private)
+  - `/blacklist` — admin menu to manage the blacklist
+
+Interactive behavior:
+
+- The bot extracts _long-term facts_ from user messages and stores only explicit, non-sensitive items in `memory.json`.
+- The persona and LLM settings are defined in `index.js` (see constants at top of file).
 
 ---
 
@@ -37,22 +47,6 @@ GUILD_ID=optional_guild_id    # optional, used by scripts/clear-commands.js
 - Logs written to the `logs/` directory.
 - Optional image analysis (disabled by default, might not work properly).
 - Ease-of-life tools for managing the bot in `scripts/`.
-
----
-
-## Usage
-- First install requirments with `npm install` then run with `node index.js` or `node .`
-- Mention the bot or use any of the slash commands. Mentions also work in direct-messages.
-- Slash commands:
-  - `/ping` — latency & uptime
-  - `/profile` — view/edit/reset your saved profile (modal-based)
-  - `/profileexport` — download your profile JSON (private)
-  - `/blacklist` — admin menu to manage the blacklist
-
-Interactive behavior:
-
-- The bot extracts _long-term facts_ from user messages and stores only explicit, non-sensitive items in `memory.json`.
-- The persona and LLM settings are defined in `index.js` (see constants at top of file).
 
 ---
 
