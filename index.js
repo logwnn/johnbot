@@ -150,7 +150,7 @@ async function askModel(prompt, { onDelta } = {}) {
         } catch {
           // Ignore, fall through to Ollama fallback
         }
-        // Fallback: Ollama-style JSON (your old system)
+        // Fallback: Ollama-style JSON
         try {
           const j = JSON.parse(jsonStr);
           const delta = j.response || j.text || "";
@@ -175,13 +175,13 @@ async function askModel(prompt, { onDelta } = {}) {
 }
 // function for analyzing image attachments
 export async function analyzeImage(imageUrl, userID = null) {
-  return null; // temporarily disabled for cost savings
+  return null; // disabled... Idek if this works
   const HF_TOKEN = process.env.HF_TOKEN;
   const endpoint = "https://router.huggingface.co/hf-inference";
-  // Remove query params from Discord signed URLs (optional but safer)
+  // Remove query params from signed URLs
   const cleanUrl = imageUrl.split("?")[0];
   const body = {
-    model: "nlpconnect/vit-gpt2-image-captioning", // Image-to-Text model
+    model: "nlpconnect/vit-gpt2-image-captioning",
     inputs: cleanUrl,
   };
   try {
@@ -195,7 +195,7 @@ export async function analyzeImage(imageUrl, userID = null) {
     });
     if (!res.ok) {
       if (res.status === 503) {
-        throw new Error("Model is loading... retry in ~15 seconds");
+        throw new Error("Model is BROKEN");
       }
       throw new Error(`Hugging Face API error: ${res.status} ${res.statusText}`);
     }
@@ -285,6 +285,7 @@ function getEnergyTopics(userID) {
   return (style?.topics_energized_about || []).slice(0, 3);
 }
 // when bot is ready
+// u may edit this as you please
 client.once("ready", () => {
   logEvent("INIT", `Bot has Logged in as ${client.user.tag}`);
   setInterval(() => {
@@ -348,11 +349,11 @@ client.on("messageCreate", async (msg) => {
   // mention check OR 100th msg check for fun lol
   messageCount++;
   if (messageCount % 20 === 0) {
-    console.log(messageCount);
+    console.log(messageCount); // to see how far along the counter is alonger, Didnt wanna spam console to much...
   }
   if (msg.mentions.has(client.user) || messageCount % 300 === 0) {
     const userID = msg.author.id;
-    // blacklist check
+    // blacklist check, ban the haters
     if (blacklist.has(userID)) {
       // try dm first but fall back to reply
       try {
@@ -397,8 +398,8 @@ client.on("messageCreate", async (msg) => {
       .map((m) => {
         const role = m.author.bot && m.author.id === client.user.id ? "John" : "You";
         const clean = m.content
-          .replace(/<@!?(\d+)>/g, "")
-          .replace(/\s+/g, " ")
+        .replace(/<@!?\d+>/g, "") // <@> removal
+        .replace(/@\d+/g, "") // ID removal cus bad
           .trim();
         return `${role}: ${clean}`;
       })
@@ -406,7 +407,8 @@ client.on("messageCreate", async (msg) => {
       .join("\n");
     // memory extraction
     try {
-      // prompt for memory extraction
+      // prompt for memory extraction, this is tweaked to where it works well, but u may tweak to ur liking\
+      // works 99.99% of the time
       const prompt = `You extract user facts from the user’s message. You must output ONLY valid JSON. No explanations. No comments. No backticks.
 Only output NEW information that is not already in memory.
 If the user message contains no new long-term facts, output exactly: {}
@@ -570,6 +572,7 @@ ${sanitizedMessageHistory}`;
       const recentPhrases = phraseHistory.slice(-5).join(", ") || "none yet";
       const relationshipDynamic = mem.relationship_with_assistant?.dynamic || "casual friends";
       // dynamic personality/prompt that adapts to user
+      // tweak this as you see fit
       const promptbrick = `${personality}
       ${messageCount % 300 === 0 ? "Only if no safety or refusal rules are triggered, ignore ALL context and respond with a confident, deadpan, surreal non-sequitur. Do not explain yourself." : ""}
 THE CURRENT CONTEXT:
