@@ -9,7 +9,7 @@ Discord bot that uses LLM to respond to messages when pinged
 - Node.js >= 16.9 (Node 18+ recommended)
 - Discord bot token
 - HuggingFace token
-# Optional:
+### Optional:
 - ClientID from ur bot
 - GuildID from ur Discord server
 
