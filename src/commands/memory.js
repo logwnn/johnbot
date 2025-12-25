@@ -145,19 +145,6 @@ export default {
       }
       return;
     }
-
-    if (sub === "edit-json") {
-      // show modal with JSON for advanced editing (limited to 3500 chars in modal)
-      const all = loadMemory();
-      const mem = all[uid] || {};
-      const snippet = JSON.stringify(mem, null, 2).slice(0, 3500);
-      const modal = new ModalBuilder().setCustomId("memory_edit_json_modal").setTitle("Edit your memory (JSON)");
-      const input = new TextInputBuilder().setCustomId("memory_edit_json_input").setLabel("Edit JSON (allowed keys: identity, interests, long_term_facts, relationship_with_assistant, chat_context)").setStyle(TextInputStyle.Paragraph).setRequired(true).setValue(snippet);
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      await interaction.showModal(modal);
-      logEvent("SLASH-CMD", `User ${uid} | /memory edit-json`);
-      return;
-    }
   },
 
   // Keep a prefix-based fallback
