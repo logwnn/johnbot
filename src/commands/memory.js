@@ -11,7 +11,21 @@ export default {
     .setDescription("Memory menu (view/edit/reset)")
     .addSubcommand((s) => s.setName("view").setDescription("View your memory"))
     .addSubcommand((s) => s.setName("edit").setDescription("Edit your memory"))
-    .addSubcommand((s) => s.setName("reset").setDescription("Reset your memory")),
+    .addSubcommand((s) => s.setName("reset").setDescription("Reset your memory"))
+    .addSubcommand((s) =>
+      s
+        .setName("set")
+        .setDescription("Set a specific memory field (dot path)")
+        .addStringOption((o) => o.setName("path").setDescription("Dot path e.g. identity.pronouns or long_term_facts.bio").setRequired(true))
+        .addStringOption((o) => o.setName("value").setDescription("Value or JSON array/object").setRequired(true))
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("unset")
+        .setDescription("Remove a memory field")
+        .addStringOption((o) => o.setName("path").setDescription("Dot path to remove").setRequired(true))
+    )
+    .addSubcommand((s) => s.setName("edit-json").setDescription("Edit your memory as JSON (advanced)")),
 
   async executeSlash(client, interaction) {
     const sub = interaction.options.getSubcommand();
@@ -55,6 +69,93 @@ export default {
       saveMemory(memStore);
       await interaction.reply({ content: "Memory reset.", ephemeral: true });
       logEvent("SLASH-CMD", `User ${uid} | /memory reset`);
+      return;
+    }
+
+    if (sub === "set") {
+      const path = interaction.options.getString("path", true).trim();
+      const valueRaw = interaction.options.getString("value", true).trim();
+      const allowed = ["identity", "interests", "long_term_facts", "relationship_with_assistant", "chat_context"];
+      const parts = path.split(".");
+      if (parts.length < 2 || !allowed.includes(parts[0])) {
+        await interaction.reply({ content: `Invalid path. Allowed top-level paths: ${allowed.join(", ")}. Use dot notation, e.g. identity.pronouns`, ephemeral: true });
+        return;
+      }
+      const all = loadMemory();
+      const mem = all[uid] || {};
+      // ensure container exists
+      if (!mem[parts[0]]) mem[parts[0]] = {};
+      // parse value as JSON if possible
+      let parsedValue = valueRaw;
+      try {
+        parsedValue = JSON.parse(valueRaw);
+      } catch {}
+      // apply change
+      let target = mem[parts[0]];
+      for (let i = 1; i < parts.length - 1; i++) {
+        const k = parts[i];
+        if (!target[k] || typeof target[k] !== "object") target[k] = {};
+        target = target[k];
+      }
+      const finalKey = parts[parts.length - 1];
+      target[finalKey] = parsedValue;
+      all[uid] = mem;
+      saveMemory(all);
+      logEvent("SLASH-CMD", `User ${uid} | /memory set ${path} = ${typeof parsedValue === "string" ? parsedValue.slice(0, 120) : JSON.stringify(parsedValue).slice(0, 120)}`);
+      await interaction.reply({ content: `Set ${path}.`, ephemeral: true });
+      return;
+    }
+
+    if (sub === "unset") {
+      const path = interaction.options.getString("path", true).trim();
+      const allowed = ["identity", "interests", "long_term_facts", "relationship_with_assistant", "chat_context"];
+      const parts = path.split(".");
+      if (parts.length < 2 || !allowed.includes(parts[0])) {
+        await interaction.reply({ content: `Invalid path. Allowed top-level paths: ${allowed.join(", ")}. Use dot notation, e.g. long_term_facts.bio`, ephemeral: true });
+        return;
+      }
+      const all = loadMemory();
+      const mem = all[uid] || {};
+      let target = mem[parts[0]];
+      if (!target) {
+        await interaction.reply({ content: `No value present at ${path}.`, ephemeral: true });
+        return;
+      }
+      for (let i = 1; i < parts.length - 1; i++) {
+        const k = parts[i];
+        if (!target[k]) {
+          target = null;
+          break;
+        }
+        target = target[k];
+      }
+      if (!target) {
+        await interaction.reply({ content: `No value present at ${path}.`, ephemeral: true });
+        return;
+      }
+      const finalKey = parts[parts.length - 1];
+      if (finalKey in target) {
+        delete target[finalKey];
+        all[uid] = mem;
+        saveMemory(all);
+        logEvent("SLASH-CMD", `User ${uid} | /memory unset ${path}`);
+        await interaction.reply({ content: `Removed ${path}.`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `No value present at ${path}.`, ephemeral: true });
+      }
+      return;
+    }
+
+    if (sub === "edit-json") {
+      // show modal with JSON for advanced editing (limited to 3500 chars in modal)
+      const all = loadMemory();
+      const mem = all[uid] || {};
+      const snippet = JSON.stringify(mem, null, 2).slice(0, 3500);
+      const modal = new ModalBuilder().setCustomId("memory_edit_json_modal").setTitle("Edit your memory (JSON)");
+      const input = new TextInputBuilder().setCustomId("memory_edit_json_input").setLabel("Edit JSON (allowed keys: identity, interests, long_term_facts, relationship_with_assistant, chat_context)").setStyle(TextInputStyle.Paragraph).setRequired(true).setValue(snippet);
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      await interaction.showModal(modal);
+      logEvent("SLASH-CMD", `User ${uid} | /memory edit-json`);
       return;
     }
   },

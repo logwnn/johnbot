@@ -161,11 +161,12 @@ export async function extractMemory(userID, messageText, recentConversation = ""
       return {};
     }
 
-    // Merge into existing memory with confidence threshold
+    // Merge into existing memory with confidence threshold (upgrade or replace where appropriate)
     const all = loadMemory();
     const existing = all[userID] || {};
     const threshold = cfg.MEMORY_CONFIDENCE_THRESHOLD ?? 0.8;
     const updated = { ...existing };
+
     for (const category of Object.keys(jsonObj)) {
       if (category === "userID") continue;
       if (!updated[category]) updated[category] = {};
@@ -173,22 +174,49 @@ export async function extractMemory(userID, messageText, recentConversation = ""
       for (const key of Object.keys(fields)) {
         const entry = fields[key];
         if (!entry) continue;
+
+        // Array fields: add new values, or upgrade confidence for existing values
         if (Array.isArray(entry)) {
           if (!Array.isArray(updated[category][key])) updated[category][key] = [];
-          entry.forEach((item) => {
-            if (!item || item.confidence < threshold) return;
-            const exists = updated[category][key].some((old) => old.value === item.value);
-            if (!exists) updated[category][key].push(item);
-          });
-        } else if (typeof entry === "object" && entry.value) {
+          for (const item of entry) {
+            if (!item || item.confidence < threshold) continue;
+            const arr = updated[category][key];
+            const idx = arr.findIndex((old) => old.value === item.value);
+            if (idx === -1) {
+              arr.push(item);
+              try {
+                const { logEvent } = await import("./logger.js");
+                logEvent("MEMORY-UPDATE", `User ${userID} | Added ${category}.${key} value=${item.value} conf=${item.confidence}`);
+              } catch {}
+            } else {
+              // upgrade confidence if the new one is higher
+              if ((arr[idx].confidence || 0) < item.confidence) {
+                arr[idx].confidence = item.confidence;
+                try {
+                  const { logEvent } = await import("./logger.js");
+                  logEvent("MEMORY-UPDATE", `User ${userID} | Updated ${category}.${key} value=${item.value} conf=${item.confidence}`);
+                } catch {}
+              }
+            }
+          }
+        }
+        // Single-value objects: replace when new confidence higher OR same confidence but different value
+        else if (typeof entry === "object" && entry.value) {
           if (entry.confidence < threshold) continue;
           const old = updated[category][key];
-          if (!old || entry.confidence > (old.confidence || 0)) {
+          const oldConf = (old && old.confidence) || 0;
+          const shouldReplace = !old || entry.confidence > oldConf || (entry.confidence === oldConf && entry.value !== old.value);
+          if (shouldReplace) {
             updated[category][key] = entry;
+            try {
+              const { logEvent } = await import("./logger.js");
+              logEvent("MEMORY-UPDATE", `User ${userID} | Set ${category}.${key} = ${entry.value} conf=${entry.confidence}`);
+            } catch {}
           }
         }
       }
     }
+
     all[userID] = updated;
     saveMemory(all);
     return jsonObj;

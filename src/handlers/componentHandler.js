@@ -118,6 +118,45 @@ export async function handleModal(interaction) {
       return;
     }
 
+    // Memory advanced JSON edit
+    if (cid === "memory_edit_json_modal") {
+      try {
+        const jsonText = interaction.fields.getTextInputValue("memory_edit_json_input") || "{}";
+        let parsed;
+        try {
+          parsed = JSON.parse(jsonText);
+        } catch (e) {
+          await interaction.reply({ content: `Invalid JSON: ${e.message}`, ephemeral: true });
+          return;
+        }
+        // Only allow top-level updates to a safe whitelist
+        const allowed = ["identity", "interests", "long_term_facts", "relationship_with_assistant", "chat_context"];
+        const keys = Object.keys(parsed);
+        const invalid = keys.filter((k) => !allowed.includes(k));
+        if (invalid.length) {
+          await interaction.reply({ content: `Invalid keys present: ${invalid.join(", ")}. Allowed: ${allowed.join(", ")}`, ephemeral: true });
+          return;
+        }
+
+        const mem = loadMemory();
+        const uid = interaction.user.id;
+        const userMem = mem[uid] || {};
+        for (const k of keys) {
+          userMem[k] = parsed[k];
+          logEvent("PROFILE-UPDATE", `User ${uid} JSON updated field: ${k}`);
+        }
+        mem[uid] = userMem;
+        saveMemory(mem);
+        await interaction.reply({ content: "Memory JSON updated.", ephemeral: true });
+      } catch (err) {
+        logEvent("ERROR", `Memory JSON modal handling failed | ${err.message}`);
+        try {
+          if (!interaction.replied) await interaction.reply({ content: "Failed to update memory.", ephemeral: true });
+        } catch {}
+      }
+      return;
+    }
+
     if (cid === "blacklist_remove_modal") {
       const input = interaction.fields.getTextInputValue("blacklist_remove_input") || "";
       const extracted = input.match(/\d{17,19}/);
