@@ -8,6 +8,7 @@ import os from "os";
 dotenv.config();
 
 // ===== CONFIGURATION =====
+const BOT_OWNER_ID = process.env.BOT_OWNER_ID;
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const HF_TOKEN = process.env.HF_TOKEN;
 const LOG_DIR = path.join("./logs");
@@ -290,35 +291,44 @@ client.once("ready", () => {
   logEvent("INIT", `Bot has Logged in as ${client.user.tag}`);
   setInterval(() => {
     const statuses = [
-      { name: "Gettin' ready for Christmas" },
-      { name: "Listening to Michael Bublé 🎵" },
-      { name: "Watching Mariah defrost..." },
-      { name: "Its beginning to look alot like Christmas..." },
-      { name: "Watching the snow fall ❄️" },
-      { name: "Making a list... checking it twice" },
-      { name: "Decking the halls 🎄" },
-      { name: "Untangling the Christmas lights... again" },
-      { name: "Listening to 'Last Christmas' 🎶" },
+      { name: "Merry Christmas ya filthy animals..." },
       { name: "Only 3 Christmases left till shower! ⏳🎄" },
-      { name: "Only 2 showers left till Christmas! ⏳🎄" },
+      { name: "Im on the NAUGHTY LIST >:(" },
+      { name: "Im on the NICE LIST :)" },
+      { name: "Unwrapping gifts like a feral raccoon" },
+      { name: "Untangling the Christmas lights... again" },
+      // listening
+      { name: "Listening to Michael Bublé 🎵" },
+      { name: "Listening to 'Last Christmas' 🎶" },
+      // watching
+      { name: "Waiting for a white christmas" },
+      // lyrics
+      { name: "He knows when you've been bad or good" },
+      { name: "I don't want alot for Christmas..." },
+      { name: "Rockin' around the Christmas tree" },
+      { name: "Oh the weather outside is frightful..." },
+      { name: "Its beginning to look alot like Christmas..." },
+      { name: "Making a list... checking it twice" },
+      { name: "Chestnuts roasting on an open fire" },
     ];
     const random = statuses[Math.floor(Math.random() * statuses.length)];
     client.user.setPresence({ activities: [random], status: "online" });
-  }, 30000); // 30000ms = 30s
+  }, 60000); // 60000ms = 60s
   // register slash commands
   (async () => {
     try {
       const commands = [
-        { name: "ping", description: "Check bot latency" },
+        { name: "ping", description: "Check status" },
         {
-          name: "profile",
-          description: "Open your private profile (edit/view)",
+          name: "memory",
+          description: "Memory menu (view/edit your saved memory)",
         },
         {
-          name: "profileexport",
-          description: "Export your saved profile as JSON (private)",
+          name: "export-memory",
+          description: "Export your saved memory as JSON (private)",
         },
-        { name: "blacklist", description: "Open admin blacklist menu" },
+        { name: "banlist", description: "Blacklist menu (Admin)" },
+        { name: "say", description: "Make the LLM follow exact instructions" },
       ];
       // Register per-guild commands for fast propagation in servers
       for (const [, guild] of client.guilds.cache) {
@@ -398,8 +408,8 @@ client.on("messageCreate", async (msg) => {
       .map((m) => {
         const role = m.author.bot && m.author.id === client.user.id ? "John" : "You";
         const clean = m.content
-        .replace(/<@!?\d+>/g, "") // <@> removal
-        .replace(/@\d+/g, "") // ID removal cus bad
+          .replace(/<@!?\d+>/g, "") // <@> removal
+          .replace(/@\d+/g, "") // ID removal cus bad
           .trim();
         return `${role}: ${clean}`;
       })
@@ -685,31 +695,52 @@ client.on("interactionCreate", async (interaction) => {
       logEvent("SLASH-CMD", `User ${interaction.user.id} | /ping | ${latencyStr}`);
       return;
     }
-    if (name === "profileexport") {
+    if (name === "say") {
+      if (interaction.user.id !== BOT_OWNER_ID) {
+        return interaction.reply({
+          content: "You don't have permission",
+          ephemeral: true,
+        });
+      }
+      const instruction = interaction.options.getString("instruction");
+      if (!instruction || instruction.trim().length === 0) {
+        await interaction.reply({
+          content: "Please provide a message to say.",
+          ephemeral: true,
+        });
+        return;
+      }
+      await interaction.reply({
+        content: instruction,
+        ephemeral: false,
+      });
+      return;
+    }
+    if (name === "export-memory") {
       const uid = interaction.user.id;
       const mem = userMemory.get(uid) || {};
       const json = JSON.stringify(mem, null, 2);
       try {
         const buf = Buffer.from(json, "utf8");
-        const attachment = new AttachmentBuilder(buf, { name: "profile.json" });
+        const attachment = new AttachmentBuilder(buf, { name: "memory.json" });
         const inGuild = !!interaction.guild;
         await interaction.reply({
-          content: "Your profile export:",
+          content: "Your memory export:",
           files: [attachment],
           ephemeral: inGuild,
         });
-        logEvent("SLASH-CMD", `User ${uid} | /profileexport`);
+        logEvent("SLASH-CMD", `User ${uid} | /memory-export`);
       } catch (e) {
-        logEvent("ERROR", `Profile export failed | ${e.message}`);
+        logEvent("ERROR", `Memory export failed | ${e.message}`);
         if (!interaction.replied)
           await interaction.reply({
-            content: "Failed to export profile.",
+            content: "Failed to export memory.",
             ephemeral: true,
           });
       }
       return;
     }
-    if (name === "profile") {
+    if (name === "memory") {
       const action = interaction.options.getString("action") || "view";
       const uid = interaction.user.id;
       const mem = userMemory.get(uid) || {};
@@ -735,36 +766,30 @@ client.on("interactionCreate", async (interaction) => {
           components: [row],
           ephemeral: true,
         });
-        logEvent("SLASH-CMD", `User ${uid} | /profile view`);
+        logEvent("SLASH-CMD", `User ${uid} | /memory view`);
         return;
       }
       if (action === "edit") {
         // show same modal as button
-        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Profile");
+        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Memory Profile");
         const bioInput = new TextInputBuilder().setCustomId("bio_input").setLabel("Short bio (why John should remember you)").setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder("likes ramen, hates scanners");
         const pronounsInput = new TextInputBuilder().setCustomId("pronouns_input").setLabel("Pronouns").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("they/them");
         const musicInput = new TextInputBuilder().setCustomId("music_input").setLabel("Favorite music / artists").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("lofi, indie, whatever");
         modal.addComponents(new ActionRowBuilder().addComponents(bioInput), new ActionRowBuilder().addComponents(pronounsInput), new ActionRowBuilder().addComponents(musicInput));
         await interaction.showModal(modal);
-        logEvent("SLASH-CMD", `User ${uid} | /profile edit`);
+        logEvent("SLASH-CMD", `User ${uid} | /memory edit`);
         return;
       }
       if (action === "reset") {
         userMemory.delete(uid);
         saveMemoryToFile();
-        await interaction.reply({ content: "Profile reset.", ephemeral: true });
-        logEvent("SLASH-CMD", `User ${uid} | /profile reset`);
+        await interaction.reply({ content: "Memory reset.", ephemeral: true });
+        logEvent("SLASH-CMD", `User ${uid} | /memory reset`);
         return;
       }
     }
     if (name === "blacklist") {
-      if (!interaction.guild)
-        return interaction.reply({
-          content: "This command must be used in a server.",
-          ephemeral: true,
-        });
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      if (!member.permissions.has(PermissionsBitField.Flags.Administrator) && !member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+      if (interaction.user.id !== BOT_OWNER_ID) {
         return interaction.reply({
           content: "You don't have permission",
           ephemeral: true,
@@ -800,7 +825,7 @@ client.on("interactionCreate", async (interaction) => {
       const id = interaction.customId;
       // Edit profile button -> show modal
       if (id === "profile_edit_btn") {
-        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Profile");
+        const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Memory Profile");
         const bioInput = new TextInputBuilder().setCustomId("bio_input").setLabel("Short bio (why John should remember you)").setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder("likes ramen, hates scanners");
         const pronounsInput = new TextInputBuilder().setCustomId("pronouns_input").setLabel("Pronouns").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("they/them");
         const musicInput = new TextInputBuilder().setCustomId("music_input").setLabel("Favorite music / artists").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("lofi, indie, whatever");
@@ -816,7 +841,7 @@ client.on("interactionCreate", async (interaction) => {
         userMemory.delete(uid);
         saveMemoryToFile();
         await interaction.reply({
-          content: "Your profile was reset.",
+          content: "Your memory has been reset.",
           ephemeral: true,
         });
         return;
@@ -874,7 +899,7 @@ client.on("interactionCreate", async (interaction) => {
         userMemory.set(uid, mem);
         saveMemoryToFile();
         await interaction.reply({
-          content: "Profile updated.",
+          content: "Memory updated.",
           ephemeral: true,
         });
         return;
