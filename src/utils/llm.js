@@ -38,7 +38,7 @@ export async function askModel(prompt, options = {}) {
  */
 export async function askModelStream(prompt, { onDelta, max_tokens = 512 } = {}) {
   try {
-    logEvent("LLM-STREAM-REQUEST", `model=${config.LLM_MODEL} prompt_snip=${(prompt || "").slice(0, 120).replace(/\n/g, " ")}`);
+    logEvent("LLM-STREAM-REQUEST", `model=${config.LLM_MODEL} prompt_snip=${(prompt || "").slice(0, 60).replace(/\n/g, " ")}`);
   } catch {}
   const endpoint = config.LLM_ENDPOINT;
   const body = {
