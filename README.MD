@@ -1,65 +1,120 @@
 # John Bot
 
-Discord bot that uses LLM to respond to messages when pinged
+A modular Discord bot that uses a configurable LLM persona to reply when mentioned, maintains per-user long-term memory, and exposes health & log endpoints for operations.
 
 ---
 
-## Requirements
+## Quick start
 
-- Node.js >= 16.9 (Node 18+ recommended)
-- Discord bot token
-- HuggingFace token
-Optional:
-- ClientID from ur bot
-- GuildID from ur Discord server
+Requirements:
 
----
+- Node.js 18+ (recommended)
+- Discord bot token (set in `.env`)
+- Hugging Face token (set in `.env`)
 
-## Usage
-1. Create a `.env` file in the repo root with the following variables:
+1. Copy `.env` and set values:
+
 ```env
 DISCORD_TOKEN=your_discord_token_here
 HF_TOKEN=your_hf_token_here
-CLIENT_ID=your_discord_app_id # optional, used by scripts/clear-commands.js
-GUILD_ID=optional_guild_id    # optional, used by scripts/clear-commands.js
+BOT_OWNER_ID=your_discord_user_id   # owner/admin checks (optional but recommended)
+CLIENT_ID=your_discord_app_id       # optional (for CLI scripts)
+GUILD_ID=optional_guild_id          # optional (for scripts)
 ```
-- Install requirments with `npm install` then run with `node index.js` or `node .`
-- Mention the bot or use any of the slash commands. Mentions also work in direct-messages.
-- Slash commands:
-  - `/ping` — latency & uptime
-  - `/profile` — view/edit/reset your saved profile (modal-based)
-  - `/profileexport` — download your profile JSON (private)
-  - `/blacklist` — admin menu to manage the blacklist
 
-Interactive behavior:
+2. Install dependencies:
 
-- The bot extracts _long-term facts_ from user messages and stores only explicit, non-sensitive items in `memory.json`.
-- The persona and LLM settings are defined in `index.js` (see constants at top of file).
+```bash
+npm install
+```
 
----
+3. Run the bot:
 
-##  Features
+```bash
+npm start
+```
 
-- Personified chat behavior with a configurable personality
-- Long-term per-user memory stored in `memory.json` (auto-saved).
-- Make the bot ignore ppl using slash commands. Stored in `blacklist.json`.
-- Slash commands: `/ping`, `/profile`, `/profileexport`, `/blacklist`.
-- Logs written to the `logs/` directory.
-- Optional image analysis (disabled by default, might not work properly).
-- Ease-of-life tools for managing the bot in `scripts/`.
+> The health server runs on `PORT` from env or `HEALTH_PORT` (default: `3000`).
 
 ---
 
-## Data & Privacy
+## Interaction model
 
-- Long-term facts are stored in `memory.json` (human‑readable JSON). To reset a user's profile you can use `/profile reset` or delete the entry from `memory.json` (requires a restart).
-- Blacklisted user IDs are saved in `blacklist.json`.
-- Logs are stored in `logs/` (one file per day).
+- Mention the bot anywhere (channel or DM) and it will reply using the LLM with streaming edits.
+- Prefix commands are supported (default prefix `!`) and full **slash** commands are available.
+
+Key slash commands (examples):
+
+- `/ping` — latency & system info
+- `/memory view` — view your persona summary and basic info
+- `/memory edit` — open modal to update profile fields
+- `/memory reset` — reset your stored memory
+- `/export-memory` — download your memory JSON
+- `/blacklist` — admin blacklist menu (owner-only)
+- `/deploy` — (owner-only) register slash commands
+- `/askmodel` — (owner-only) ad-hoc model prompt
+- `/archive-logs` — (owner-only) run log archiving now
+- `/health` — returns uptime & system info (ephemeral)
+- `/say` — (owner-only) make the bot send a message (audit logged)
 
 ---
 
-## Development & Scripts
+## Health & Logs
 
-- `scripts/clear-commands.js` helps list/clear application commands (see top of the script for usage). It uses `DISCORD_TOKEN`, `CLIENT_ID`, and optionally `GUILD_ID`.
-- To change the LLM model or endpoint, edit the `LLM_MODEL` and `LLM_ENDPOINT` constants at the top of `index.js`.
-- `analyzeImage()` is present but returns null `null` cus it doesnt work properly
+An **Express** health server exposes operational endpoints:
+
+- `GET /health` — JSON health payload (uptime, node, memory, guild & user counts)
+- `GET /` — simple HTML status page with links
+- `GET /logs` — list log files (`?archive=1` to list archived logs)
+- `GET /logs/:name` — view a log file; supports query params:
+  - `?lines=N` to return the last N lines
+  - `?download=1` to download the file
+
+Logs are written to `logs/` (one file per day) and archived to `logs/archive/` by the log archiver.
+
+> All log operations are recorded via the built-in `logEvent` utility.
+
+---
+
+## Configuration
+
+Runtime tunables are in `src/config/john.json` (some important keys):
+
+- `personality` — persona prompt for the LLM
+- `LLM_ENDPOINT`, `LLM_MODEL` — model selection
+- `MEMORY_CONFIDENCE_THRESHOLD` — threshold for storing extracted facts
+- `MAX_MESSAGE_HISTORY` — messages fetched for context
+- `MAX_RESPONSE_LENGTH`, `EDIT_THROTTLE_MS` — streaming behavior
+- `SUMMARIZE_PERSONA_INTERVAL` — how often persona summarization runs (interactions)
+- `thinkingReply`, `errorReply`, `blacklistReply` — canned replies
+
+You can override settings with environment variables where applicable.
+
+---
+
+## Memory & Privacy
+
+- Per-user memory is saved in `memory.json`. The extraction logic only stores **explicit** long-term facts and avoids sensitive categories by design.
+- Commands to manage data:
+  - `/memory reset` or profile reset button — delete your memory entry
+  - Admins can manage blacklist via `/blacklist` and component modals
+
+**Note:** If you need GDPR/retention guarantees, manage `memory.json` and `logs/` as part of your deployment process.
+
+---
+
+## Project layout
+
+- `start.js` — app entrypoint
+- `src/commands/` — slash & prefix command modules
+- `src/events/` — Discord event handlers (`ready`, `messageCreate`, `interactionCreate`)
+- `src/handlers/` — logic for commands, slash registration, mentions, components
+- `src/utils/` — `logger.js`, `llm.js`, `memory.js`, `image.js`, `text.js`, `logArchive.js`, `healthServer.js`
+- `scripts/` — convenience scripts (backup/clear commands, etc.)
+
+---
+
+## Logging & Monitoring
+
+- Use `logs/` to review activity (one file per day). Key event types are logged (e.g., `INIT`, `ERROR`, `LLM-STREAM-START`, `MEMORY-EXTRACT-NEW`, `ADMIN`, etc.).
+- The `logArchive` utility gzips old logs to `logs/archive/` on a schedule. You can manually trigger via `/archive-logs`.
