@@ -4,13 +4,6 @@ export default {
     if (message.author?.bot) return;
 
     const { logEvent } = await import("../utils/logger.js");
-    // Log basic receipt (avoid logging full content beyond a short snippet)
-    try {
-      const snippet = (message.content || "").slice(0, 120).replace(/\n/g, " ");
-      logEvent("MESSAGE-RECV", `From ${message.author.id} in ${message.channel.id} | ${snippet}`);
-    } catch (e) {
-      // non-fatal logging error
-    }
 
     // If the bot is mentioned, handle with the LLM mention handler
     const { handleMention } = await import("../handlers/mentionHandler.js");
@@ -22,7 +15,6 @@ export default {
 
     // Otherwise delegate prefix-based commands to the command handler
     const { handleMessage } = await import("../handlers/commandHandler.js");
-    logEvent("MESSAGE-DELEGATE", `Delegating message from ${message.author.id} to command handler`);
     await handleMessage(client, message);
   },
 };
