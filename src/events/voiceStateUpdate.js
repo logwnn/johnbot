@@ -5,8 +5,8 @@ export default {
     const { handleVoiceStateUpdate } = await import("../handlers/voiceStateHandler.js");
     await handleVoiceStateUpdate(client, oldState, newState);
     logEvent(
-      "VOICE-STATE-UPDATE",
-      `Voice state updated for user ${newState.id} in guild ${newState.guild.id}`
+      "EVENT",
+      `voiceStateUpdate event for user ${newState.id} in guild ${newState.guild.id}`
     );
   },
 };
