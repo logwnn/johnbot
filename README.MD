@@ -21,6 +21,7 @@ OPENAI_KEY=your_hf_token_here
 BOT_OWNER_ID=your_discord_user_id   # owner/admin checks (optional but recommended)
 CLIENT_ID=your_discord_app_id       # optional (for CLI scripts)
 GUILD_ID=optional_guild_id          # optional (for scripts)
+CONFESSION_CHANNEL_ID=channel_ID
 ```
 
 2. Install dependencies:
