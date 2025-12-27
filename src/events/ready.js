@@ -14,19 +14,18 @@ export default {
       { name: "with your mom" },
       { name: "the void" },
       { name: "99 Luftballons" },
-      { name: "waiting for the ultimate question" },
       { name: "the Ultimate Question of Life, the Universe, and Everything" },
       { name: "42" },
       { name: "Don't Panic." },
       { name: "So long, and thanks for all the fish." },
-      { name: "in a towel" },
+      { name: "in a towel rn" },
       { name: "ready for some rizzing" },
-      { name: "calculating pi..." },
+      { name: "You're mine." },
     ];
     const setRandomStatus = () => {
       const random = randomStatuses[Math.floor(Math.random() * randomStatuses.length)];
       try {
-        client.user.setPresence({ activities: [random], status: "idle" });
+        client.user.setPresence({ activities: [random], status: "online" });
       } catch {}
     };
     setRandomStatus();

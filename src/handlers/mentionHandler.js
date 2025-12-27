@@ -7,6 +7,8 @@ import config from "../utils/config.js";
 export async function handleMention(client, message) {
   try {
     if (!message || message.author?.bot) return;
+    // if the message is in a forbidden channel then ignore
+    if (process.env.CONFESSION_CHANNEL_ID === message.channel.id) return; // makes sure john doesnt reply to confessions
     const uid = message.author.id;
     const blacklist = loadBlacklist() || [];
     if (blacklist.includes(uid)) {
@@ -27,7 +29,7 @@ export async function handleMention(client, message) {
 
     let replyMessage;
     try {
-      replyMessage = await message.reply("John is thinking...");
+      replyMessage = await message.reply("**John is thinking...**");
       await message.channel.sendTyping();
       logEvent("RESPONSE-START", `User ${uid} | Message for LLM: "${message.content}"`);
       try {
@@ -133,7 +135,7 @@ export async function handleMention(client, message) {
         2000,
         true,
         (delta, fullText) => {
-          replyMessage.edit("John is typing..." + "\n" + fullText + "...");
+          replyMessage.edit("**John is typing...**" + "\n" + fullText + "...");
         }
       );
       await replyMessage.edit(fullText);
