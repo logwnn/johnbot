@@ -3,6 +3,13 @@ import path from "path";
 
 const MEMORY_FILE = path.join(process.cwd(), "memory.json");
 const BLACKLIST_FILE = path.join(process.cwd(), "blacklist.json");
+const CONFESSIONS_FILE = path.join(process.cwd(), "confessions.json");
+
+function ensureStorage() {
+  if (!fs.existsSync(CONFESSIONS_FILE)) {
+    fs.writeFileSync(CONFESSIONS_FILE, "[]", "utf8");
+  }
+}
 
 export function loadMemory() {
   if (!fs.existsSync(MEMORY_FILE)) return {};
@@ -30,6 +37,28 @@ export function saveBlacklist(list) {
   fs.writeFileSync(BLACKLIST_FILE, JSON.stringify(list, null, 2));
 }
 
+export function loadConfessions() {
+  ensureStorage();
+  try {
+    const raw = fs.readFileSync(CONFESSIONS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error("Confessions file is not an array");
+    }
+    return parsed;
+  } catch (err) {
+    console.error("Failed to load confessions:", err);
+    return [];
+  }
+}
+
+export function saveConfessions(confessions) {
+  ensureStorage();
+  const tmpFile = CONFESSIONS_FILE + ".tmp";
+  fs.writeFileSync(tmpFile, JSON.stringify(confessions, null, 2), "utf8");
+  fs.renameSync(tmpFile, CONFESSIONS_FILE);
+}
+
 // Additional helpers
 export function addPhraseToHistory(userID, phrase) {
   const mem = loadMemory();
@@ -46,7 +75,20 @@ export function getAmbientContext(userID) {
   const now = new Date();
   const hour = now.getHours();
   const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long" });
-  const timeOfDay = hour < 6 ? "very early morning" : hour < 9 ? "early morning" : hour < 12 ? "morning" : hour < 14 ? "noon" : hour < 17 ? "afternoon" : hour < 20 ? "evening" : "night";
+  const timeOfDay =
+    hour < 6
+      ? "very early morning"
+      : hour < 9
+      ? "early morning"
+      : hour < 12
+      ? "morning"
+      : hour < 14
+      ? "noon"
+      : hour < 17
+      ? "afternoon"
+      : hour < 20
+      ? "evening"
+      : "night";
   const mem = loadMemory()[userID] || {};
   let daysSinceLastChat = "first time";
   if (mem?.meta?.last_interaction_timestamp) {
@@ -98,120 +140,187 @@ export function getEnergyTopics(userID) {
 export async function extractMemory(userID, messageText, recentConversation = "") {
   try {
     const { askModel } = await import("./llm.js");
-    const current = loadMemory()[userID] || {};
+    const { logEvent } = await import("./logger.js");
     const configModule = await import("./config.js");
     const cfg = configModule.default || configModule.config;
-    const prompt = `You extract user facts from the user’s message. You must output ONLY valid JSON. No explanations. No comments. No backticks.\nOnly output NEW information that is not already in memory.\nIf the user message contains no new long-term facts, output exactly: {}\nDo NOT infer, guess, assume, or deduce anything. Only store information explicitly stated by the user.\nOnly store long-term, stable facts. Do not store temporary feelings, jokes, sarcasm, short-lived info, or one-off comments.\nDo NOT store sensitive data (health, politics, etc.) unless the user explicitly asks you to remember it.\nDo NOT repeat anything already present in CURRENT MEMORY.\nEvery stored fact must include a confidence score (0–1). Direct, explicit statements = 1.0. Literal but slightly implied = 0.2–0.7.\nOnly include fields that contain new values. Omit sections with no new information.\nOutput must be strictly valid JSON. No extra text.\nOUTPUT FORMAT (fill only fields containing new info):\n${JSON.stringify(
-      {
-        userID: userID,
-        identity: {
-          name: { value: "string", confidence: 1 },
-          pronouns: { value: "string", confidence: 1 },
-          gender: { value: "string", confidence: 1 },
-          age: { value: "number", confidence: 1 },
-          location: { value: "string", confidence: 1 },
-        },
-        relationship_with_assistant: {
-          closeness: { value: "string", confidence: 1 },
-          dynamic: { value: "string", confidence: 1 },
-          boundaries: [{ value: "string", confidence: 1 }],
-        },
-        interests: {
-          games: [{ value: "string", confidence: 1 }],
-          music: [{ value: "string", confidence: 1 }],
-          hobbies: [{ value: "string", confidence: 1 }],
-          topics: [{ value: "string", confidence: 1 }],
-          favorite_things: [{ value: "string", confidence: 1 }],
-        },
-        long_term_facts: {
-          job: { value: "string", confidence: 1 },
-          pets: [{ value: "string", confidence: 1 }],
-          bio_notes: [{ value: "string", confidence: 1 }],
-        },
-        chat_context: {
-          current_topic: { value: "string", confidence: 1 },
-          recent_topics: [{ value: "string", confidence: 1 }],
-          user_intent: { value: "string", confidence: 1 },
-          emotional_tone: { value: "string", confidence: 1 },
-          temporary_preferences: [{ value: "string", confidence: 1 }],
-        },
-      },
-      null,
-      2
-    )}\nIf no new facts → output {}.\nYou will always receive the following input:\nCURRENT MEMORY (for reference, do NOT repeat any of it):\n${JSON.stringify(current, null, 2)}\n\nMESSAGE TO ANALYZE:\n"${messageText}"\n\nRECENT CONVERSATION HISTORY:\n${recentConversation}`;
 
-    const output = await askModel(prompt);
-    let clean = output?.trim?.() || "";
-    if (clean.startsWith("```json")) clean = clean.slice(7);
-    if (clean.startsWith("```")) clean = clean.slice(3);
-    if (clean.endsWith("```")) clean = clean.slice(0, -3);
-    clean = clean.trim();
-    let jsonObj = {};
-    try {
-      jsonObj = clean.length ? JSON.parse(clean) : {};
-    } catch (e) {
-      const { logEvent } = await import("./logger.js");
-      logEvent("WARN", `Memory extraction JSON parse failed for user ${userID} | Raw output: ${output}`);
-      jsonObj = {};
+    const all = loadMemory();
+    const existing = all[userID] || {};
+    const threshold = cfg.MEMORY_CONFIDENCE_THRESHOLD ?? 0.7;
+
+    const prompt = `
+You are extracting long-term user memory.
+OUTPUT RULES (STRICT):
+- Output MUST be valid JSON only.
+- Do NOT include markdown, code fences, comments, or explanations.
+- If no memory is found, output {}.
+- Do NOT include confidence at category level.
+- Do NOT output raw strings, numbers, or booleans as values.
+MEMORY RULES:
+- Only extract facts the user explicitly stated.
+- Do NOT infer, guess, summarize, or restate.
+- Do NOT repeat existing memory.
+- Do NOT include temporary, situational, or sensitive information.
+SCHEMA RULES:
+- Every leaf field MUST be one of:
+  1) { "value": <primitive or null>, "confidence": <number 0-1> }
+  2) [ { "value": <primitive>, "confidence": <number 0-1> } ]
+- Confidence applies ONLY to the specific value.
+- Confidence MUST be a number between 0 and 1.
+ALLOWED CATEGORIES:
+identity
+relationship_with_assistant
+interests
+long_term_facts
+chat_context
+EXAMPLE OUTPUT:
+{
+  "identity": {
+    "name": { "value": "Logan", "confidence": 0.95 }
+  }
+}
+CURRENT MEMORY KEYS:
+${JSON.stringify(Object.keys(existing))}
+USER MESSAGE:
+"${messageText}"
+`;
+
+    const output = await askModel(prompt, null, "minimal", false, 500, false);
+    console.log(output);
+
+    // ---------- HARDENED JSON EXTRACTION ----------
+    function extractFirstValidJSON(input) {
+      if (typeof input !== "string") return null;
+      const text = input.replace(/```(?:json)?/gi, "");
+
+      let inString = false;
+      let escape = false;
+      let depth = 0;
+      let start = -1;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+
+        if (escape) {
+          escape = false;
+          continue;
+        }
+
+        if (ch === "\\") {
+          escape = true;
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = !inString;
+          continue;
+        }
+
+        if (inString) continue;
+
+        if (ch === "{" || ch === "[") {
+          if (depth === 0) start = i;
+          depth++;
+        } else if (ch === "}" || ch === "]") {
+          depth--;
+          if (depth === 0 && start !== -1) {
+            const slice = text.slice(start, i + 1);
+            try {
+              return JSON.parse(slice);
+            } catch {
+              start = -1;
+            }
+          }
+        }
+      }
+      return null;
     }
 
-    if (!jsonObj || Object.keys(jsonObj).length === 0) {
-      const { logEvent } = await import("./logger.js");
+    const parsed = extractFirstValidJSON(String(output));
+
+    if (!parsed || typeof parsed !== "object") {
+      logEvent("WARN", `Memory extraction failed for user ${userID}`, {
+        rawOutput: String(output).slice(0, 2000),
+      });
+      return {};
+    }
+
+    if (Object.keys(parsed).length === 0) {
       logEvent("MEMORY-EXTRACT", `User ${userID} | No new facts extracted`);
       return {};
     }
 
-    // Merge into existing memory with confidence threshold (upgrade or replace where appropriate)
-    const all = loadMemory();
-    const existing = all[userID] || {};
-    const threshold = cfg.MEMORY_CONFIDENCE_THRESHOLD ?? 0.8;
+    // ---------- NORMALIZE + MERGE ----------
     const updated = { ...existing };
 
-    for (const category of Object.keys(jsonObj)) {
-      if (category === "userID") continue;
+    for (const category of Object.keys(parsed)) {
       if (!updated[category]) updated[category] = {};
-      const fields = jsonObj[category] || {};
-      for (const key of Object.keys(fields)) {
-        const entry = fields[key];
-        if (!entry) continue;
+      const fields = parsed[category] || {};
 
-        // Array fields: add new values, or upgrade confidence for existing values
+      for (const key of Object.keys(fields)) {
+        let entry = fields[key];
+        if (entry == null) continue;
+
+        // Normalize primitive → { value, confidence }
+        if (typeof entry !== "object" || Array.isArray(entry)) {
+          entry = {
+            value: entry,
+            confidence: Number(fields.confidence ?? 0.5),
+          };
+        }
+
+        // Array of entries
         if (Array.isArray(entry)) {
-          if (!Array.isArray(updated[category][key])) updated[category][key] = [];
+          if (!Array.isArray(updated[category][key])) {
+            updated[category][key] = [];
+          }
+
           for (const item of entry) {
-            if (!item || item.confidence < threshold) continue;
+            if (!item || typeof item !== "object") continue;
+            const confidence = Number(item.confidence);
+            if (!Number.isFinite(confidence) || confidence < threshold) continue;
+
             const arr = updated[category][key];
             const idx = arr.findIndex((old) => old.value === item.value);
+
             if (idx === -1) {
-              arr.push(item);
-              try {
-                const { logEvent } = await import("./logger.js");
-                logEvent("MEMORY-UPDATE", `User ${userID} | Added ${category}.${key} value=${item.value} conf=${item.confidence}`);
-              } catch {}
-            } else {
-              // upgrade confidence if the new one is higher
-              if ((arr[idx].confidence || 0) < item.confidence) {
-                arr[idx].confidence = item.confidence;
-                try {
-                  const { logEvent } = await import("./logger.js");
-                  logEvent("MEMORY-UPDATE", `User ${userID} | Updated ${category}.${key} value=${item.value} conf=${item.confidence}`);
-                } catch {}
-              }
+              arr.push({ value: item.value, confidence });
+              logEvent(
+                "MEMORY-UPDATE",
+                `User ${userID} | Added ${category}.${key} value=${item.value} conf=${confidence}`
+              );
+            } else if ((arr[idx].confidence || 0) < confidence) {
+              arr[idx].confidence = confidence;
+              logEvent(
+                "MEMORY-UPDATE",
+                `User ${userID} | Updated ${category}.${key} value=${item.value} conf=${confidence}`
+              );
             }
           }
         }
-        // Single-value objects: replace when new confidence higher OR same confidence but different value
-        else if (typeof entry === "object" && entry.value) {
-          if (entry.confidence < threshold) continue;
+
+        // Single value
+        else if ("value" in entry) {
+          const confidence = Number(entry.confidence);
+          if (!Number.isFinite(confidence) || confidence < threshold) continue;
+
           const old = updated[category][key];
-          const oldConf = (old && old.confidence) || 0;
-          const shouldReplace = !old || entry.confidence > oldConf || (entry.confidence === oldConf && entry.value !== old.value);
-          if (shouldReplace) {
-            updated[category][key] = entry;
-            try {
-              const { logEvent } = await import("./logger.js");
-              logEvent("MEMORY-UPDATE", `User ${userID} | Set ${category}.${key} = ${entry.value} conf=${entry.confidence}`);
-            } catch {}
+          const oldConf = old?.confidence ?? 0;
+
+          if (
+            !old ||
+            confidence > oldConf ||
+            (confidence === oldConf && entry.value !== old.value)
+          ) {
+            updated[category][key] = {
+              value: entry.value,
+              confidence,
+            };
+
+            logEvent(
+              "MEMORY-UPDATE",
+              `User ${userID} | Set ${category}.${key} = ${entry.value} conf=${confidence}`
+            );
           }
         }
       }
@@ -219,7 +328,7 @@ export async function extractMemory(userID, messageText, recentConversation = ""
 
     all[userID] = updated;
     saveMemory(all);
-    return jsonObj;
+    return parsed;
   } catch (err) {
     const { logEvent } = await import("./logger.js");
     logEvent("ERROR", `Memory extraction failed | Error="${err}"`);

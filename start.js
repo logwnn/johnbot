@@ -5,7 +5,7 @@ import { initCommandHandler } from "./src/handlers/commandHandler.js";
 import { logEvent } from "./src/utils/logger.js";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildVoiceStates],
   partials: [Partials.Channel, Partials.User],
 });
 

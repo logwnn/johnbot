@@ -12,11 +12,12 @@ Requirements:
 - Discord bot token (set in `.env`)
 - Hugging Face token (set in `.env`)
 
-1. Copy `.env` and set values:
+1. Make an `.env` and set values:
+   You can use the .env.example also
 
 ```env
 DISCORD_TOKEN=your_discord_token_here
-HF_TOKEN=your_hf_token_here
+OPENAI_KEY=your_hf_token_here
 BOT_OWNER_ID=your_discord_user_id   # owner/admin checks (optional but recommended)
 CLIENT_ID=your_discord_app_id       # optional (for CLI scripts)
 GUILD_ID=optional_guild_id          # optional (for scripts)
@@ -34,7 +35,7 @@ npm install
 npm start
 ```
 
-> The health server runs on `PORT` from env or `HEALTH_PORT` (default: `3000`).
+> The health server runs on `PORT` from env or `HEALTH_PORT` from config (default: `8080`).
 
 ---
 
@@ -50,6 +51,7 @@ Key slash commands (examples):
 - `/memory edit` — open modal to update profile fields
 - `/memory reset` — reset your stored memory
 - `/export-memory` — download your memory JSON
+- `/jvc` — Joins the current voice channel of the user uses speech to text and vice versa to talk to the user.
 - `/blacklist` — admin blacklist menu (owner-only)
 - `/deploy` — (owner-only) register slash commands
 - `/askmodel` — (owner-only) ad-hoc model prompt
