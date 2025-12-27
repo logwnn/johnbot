@@ -42,7 +42,7 @@ export default {
     const confessionChannel = await client.channels.fetch(confessionChannelId);
     if (confessionChannel) {
       const embed = new EmbedBuilder()
-        .setTitle(`"Anonymous Confession #${newConfession.index}`)
+        .setTitle(`Anonymous Confession #${newConfession.index}`)
         .setColor(0x2f3136) // neutral dark theme
         .setTimestamp(new Date(newConfession.timestamp))
         .setFooter({ text: "Type /confessions to send a confession" });
