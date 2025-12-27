@@ -1,7 +1,9 @@
 .env
 memory.json
+confessions.json
+blacklist.json
 logs
-*.log
+*.jsonl
 node_modules
 scripts
 backup-index.js
