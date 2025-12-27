@@ -11,11 +11,15 @@ export async function handleMention(client, message) {
     const blacklist = loadBlacklist() || [];
     if (blacklist.includes(uid)) {
       try {
-        await message.author.send(config.blacklistReply);
+        await message.author.send(
+          "so sad to bad, you have been blacklisted from interacting with John nihaaaw!"
+        );
         logEvent("INFO", `Sent blacklist DM to ${uid}`);
       } catch {
         try {
-          await message.reply(config.blacklistReply);
+          await message.reply(
+            "so sad to bad, you have been blacklisted from interacting with John nihaaaw!"
+          );
         } catch {}
       }
       return;
@@ -23,7 +27,7 @@ export async function handleMention(client, message) {
 
     let replyMessage;
     try {
-      replyMessage = await message.reply(config.thinkingReply);
+      replyMessage = await message.reply("John is thinking...");
       await message.channel.sendTyping();
       logEvent("RESPONSE-START", `User ${uid} | Message for LLM: "${message.content}"`);
       try {
@@ -129,7 +133,7 @@ export async function handleMention(client, message) {
         2000,
         true,
         (delta, fullText) => {
-          replyMessage.edit(config.typingReply + "\n" + fullText + "...");
+          replyMessage.edit("John is typing..." + "\n" + fullText + "...");
         }
       );
       await replyMessage.edit(fullText);

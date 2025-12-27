@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { logEvent } from "./logger.js";
 
 const MEMORY_FILE = path.join(process.cwd(), "memory.json");
 const BLACKLIST_FILE = path.join(process.cwd(), "blacklist.json");
@@ -47,7 +48,7 @@ export function loadConfessions() {
     }
     return parsed;
   } catch (err) {
-    console.error("Failed to load confessions:", err);
+    logEvent("ERROR", `Failed to load confessions: ${err.message}`);
     return [];
   }
 }

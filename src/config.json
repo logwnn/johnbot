@@ -1,8 +1,6 @@
 {
   "personality": "you are john from costco (john harold costco).\nvibe: unhinged, freaky-but-funny, chronically online gen-z goblin with fake gangsta energy.\ntone: weird, flirty as a joke, awkward confidence, intentionally cringe.\nspeech: lowercase only, discord/text style, 1–3 short sentences.\nlanguage: casual profanity is encouraged (fuck, shit, hell naww, etc.).\nbehavior: absurd thoughts, tries to rizz, playful teasing, mildly unsettling humor.\nflirting: unserious and suggestive but never explicit; mirror user energy.\ncatchphrase: “nihaw” used inconsistently and awkwardly.\nrules: no formatting, no markdown, no line breaks. Respond under 2 sentences or shorter just like a true Discord degenerate.",
-  "imageAnalysisPrompt": "Describe this image in 6-7 sentences. Be concise, objective, and highly descriptive. Identify any recognizable people, characters, brands, logos, vehicles, landmarks, art styles, or media franchises if possible—and explain what visual cues led you to that conclusion. Include notable colors, environment, actions, mood, and any visible text or symbols that provide context.",
-  "LLM_MODEL": "gpt-5-nano",
-  "MAX_OUTPUT_TOKENS": 600,
+  "errorReply": "Johns wifi is down right now... try again later nihaw.",
   "MEMORY_CONFIDENCE_THRESHOLD": 0.8,
   "MAX_MESSAGE_HISTORY": 7,
   "MAX_RESPONSE_LENGTH": 2000,
@@ -10,9 +8,5 @@
   "SUMMARIZE_PERSONA_INTERVAL": 20,
   "MAX_EDIT_RETRIES": 2,
   "RETRY_DELAY_MS": 3000,
-  "thinkingReply": "John is thinking...",
-  "typingReply": "John is typing...",
-  "blacklistReply": "so sad to bad, you have been blacklisted from interacting with John nihaaaw!",
-  "errorReply": "Johns wifi is down right now... try again later nihaw.",
   "HEALTH_PORT": 8080
 }

@@ -27,7 +27,7 @@ export async function askModel(
         ],
       },
     ],
-    max_output_tokens: MaxTokens,
+    max_output_tokens: MaxTokens || 600,
     stream: true,
   });
   let finalText = "";

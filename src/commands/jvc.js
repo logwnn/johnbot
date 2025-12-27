@@ -121,7 +121,6 @@ export default {
               },
             ],
             store: true,
-            //max_output_tokens: 80,
           });
 
           const audioOut = Buffer.from(gptAudioResponse.choices[0].message.audio.data, "base64");

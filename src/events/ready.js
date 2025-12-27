@@ -6,7 +6,7 @@ export default {
     logEvent("INIT", `Bot has logged in as ${client.user.tag}`);
 
     // Fun rotating statuses
-    const statuses = [
+    const randomStatuses = [
       { name: "trying to rizz u up" },
       { name: "john is thinking... this may take a while" },
       { name: "chronically online final boss" },
@@ -24,7 +24,7 @@ export default {
       { name: "calculating pi..." },
     ];
     const setRandomStatus = () => {
-      const random = statuses[Math.floor(Math.random() * statuses.length)];
+      const random = randomStatuses[Math.floor(Math.random() * randomStatuses.length)];
       try {
         client.user.setPresence({ activities: [random], status: "idle" });
       } catch {}

@@ -10,13 +10,10 @@ export default {
     .setName("confessions")
     .setDescription("Confess things anonymously")
     .addStringOption((o) =>
-      o.setName("message").setDescription("Your anonymous confession").setRequired(false)
+      o.setName("message").setDescription("Your confession").setRequired(false)
     )
     .addAttachmentOption((o) =>
-      o
-        .setName("attachment")
-        .setDescription("An optional attachment to include with your confession")
-        .setRequired(false)
+      o.setName("attachment").setDescription("Image to attach").setRequired(false)
     ),
 
   async executeSlash(client, interaction) {
@@ -25,7 +22,7 @@ export default {
     const attachment = interaction.options.getAttachment("attachment");
     if (!message && !attachment) {
       return interaction.reply({
-        content: "You must provide a message or an attachment for your confession.",
+        content: "You cant submit a blank confession nihaww",
         ephemeral: true,
       });
     }
@@ -34,7 +31,7 @@ export default {
       message: message ?? null,
       attachment: attachment?.url ?? null,
       attachmentName: attachment?.name ?? null,
-      userId: interaction.user.id,
+      // userId: interaction.user.id,
       timestamp: Date.now(),
     };
     list.push(newConfession);
@@ -45,9 +42,10 @@ export default {
     const confessionChannel = await client.channels.fetch(confessionChannelId);
     if (confessionChannel) {
       const embed = new EmbedBuilder()
-        .setTitle(`Confession #${newConfession.index}`)
+        .setTitle(`"Anonymous Confession #${newConfession.index}`)
         .setColor(0x2f3136) // neutral dark theme
-        .setTimestamp(new Date(newConfession.timestamp));
+        .setTimestamp(new Date(newConfession.timestamp))
+        .setFooter({ text: "Type /confessions to send a confession" });
       if (newConfession.message) {
         embed.setDescription(newConfession.message);
       } else {
@@ -67,8 +65,14 @@ export default {
       }
       await confessionChannel.send(payload);
     }
+    const randomConfessionReplies = [
+      "Your confession has been sent anonymously.",
+      "Confession received! Thanks for sharing.",
+      "Your secret is safe with Johnny boy...",
+      "Anonymous confession submitted successfully.",
+    ];
     return interaction.reply({
-      content: "Confession submitted.",
+      content: randomConfessionReplies[Math.floor(Math.random() * randomConfessionReplies.length)],
       ephemeral: true,
     });
   },
