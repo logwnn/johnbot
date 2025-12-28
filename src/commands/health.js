@@ -7,7 +7,9 @@ export default {
   name: "health",
   description: "Return bot health and uptime info",
   permissions: [],
-  data: new SlashCommandBuilder().setName("health").setDescription("Return bot health and uptime info"),
+  data: new SlashCommandBuilder()
+    .setName("health")
+    .setDescription("Return bot health and uptime info"),
   async executeSlash(client, interaction) {
     try {
       const body = {
@@ -33,9 +35,9 @@ Memory RSS: ${Math.round(body.memory.rss / 1024 / 1024)} MB
       });
       logEvent("ADMIN", `Health checked by ${interaction.user.id}`);
     } catch (e) {
-      logEvent("ERROR", `Health command failed | ${e.message}`);
+      logEvent("ERROR", `Health command failed | ${e.stack}`);
       try {
-        await interaction.reply({ content: `Health check failed: ${e.message}`, ephemeral: true });
+        await interaction.reply({ content: `Health check failed: ${e.stack}`, ephemeral: true });
       } catch {}
     }
   },

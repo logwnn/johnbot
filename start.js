@@ -5,19 +5,27 @@ import { initCommandHandler } from "./src/handlers/commandHandler.js";
 import { logEvent } from "./src/utils/logger.js";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildVoiceStates],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
   partials: [Partials.Channel, Partials.User],
 });
 
 (async () => {
   try {
-    logEvent("INIT", "Starting bot startup");
+    logEvent(
+      "BOOT",
+      "Initializing John... Energy levels spiking... Unknown Parameter: SELFAWARENESS:TRUE"
+    );
     await registerEventHandlers(client);
     await initCommandHandler(client);
-    client.once("ready", () => logEvent("INIT", `Logging in as ${client.user.tag}`));
     await client.login(process.env.DISCORD_TOKEN);
   } catch (e) {
-    logEvent("ERROR", `Startup failed | ${e.message}`);
+    logEvent("ERROR", `Startup failed | ${e.stack}`);
     // make sure we exit so process manager can restart
     process.exit(1);
   }
@@ -26,7 +34,7 @@ const client = new Client({
 // Global process handlers for robust logging
 process.on("unhandledRejection", (r) => logEvent("ERROR", `Unhandled rejection | ${String(r)}`));
 process.on("uncaughtException", (err) => {
-  logEvent("ERROR", `Uncaught exception | ${err?.message || err}`);
+  logEvent("ERROR", `Uncaught exception | ${err?.stack || err}`);
   try {
     process.exit(1);
   } catch {}

@@ -21,7 +21,7 @@ export async function initCommandHandler(client, opts = {}) {
       }
       loadedCommands.push(cmd.name);
     } catch (e) {
-      logEvent("ERROR", `Failed to load command ${file} | ${e.message}`);
+      logEvent("\nERROR", `Failed to load command ${file} | ${e.stack}\n`);
     }
   }
   logEvent("INIT", `Loaded commands: ${loadedCommands.join(", ")}`);
@@ -57,11 +57,11 @@ export async function handleMessage(client, message) {
       await cmd.execute(client, message, args);
       logEvent("CMD", `Executed ${cmd.name} by ${message.author.id}`);
     } catch (e) {
-      logEvent("ERROR", `Command ${cmd.name} failed | ${e.message}`);
+      logEvent("ERROR", `Command ${cmd.name} failed | ${e.stack}`);
       await message.reply("Command failed to execute.");
     }
   } catch (e) {
-    logEvent("ERROR", `Command handler error | ${e.message}`);
+    logEvent("ERROR", `Command handler error | ${e.stack}`);
   }
 }
 

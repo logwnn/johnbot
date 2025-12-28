@@ -4,13 +4,16 @@ export default {
     const { logEvent } = await import("../utils/logger.js");
     try {
       // Slash commands
-      if (interaction.isChatInputCommand && interaction.isChatInputCommand()) {
+      if (interaction.isChatInputCommand()) {
         const name = interaction.commandName;
         logEvent("SLASH-CMD", `User ${interaction.user.id} | Command="/${name}"`);
         const { slashCommands } = await import("../handlers/commandHandler.js");
         const cmd = slashCommands.get(name);
         if (!cmd) {
-          logEvent("SLASH-UNKNOWN", `User ${interaction.user.id} attempted /${name} but command module not found`);
+          logEvent(
+            "SLASH-UNKNOWN",
+            `User ${interaction.user.id} attempted /${name} but command module not found`
+          );
           try {
             await interaction.reply({ content: "Command not found.", ephemeral: true });
           } catch {}
@@ -21,7 +24,9 @@ export default {
         const fs = await import("fs");
         const path = await import("path");
         const configPath = path.join(process.cwd(), "config.json");
-        const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf8")) : {};
+        const config = fs.existsSync(configPath)
+          ? JSON.parse(fs.readFileSync(configPath, "utf8"))
+          : {};
         const ownerId = process.env.BOT_OWNER_ID || config.ownerId;
         const { check } = await import("../utils/permissions.js");
         const memberObj = interaction.member ?? { user: interaction.user, id: interaction.user.id };
@@ -38,9 +43,10 @@ export default {
           else if (cmd.execute) await cmd.execute(client, interaction, []);
           logEvent("SLASH-CMD", `Executed /${name} by ${interaction.user.id}`);
         } catch (e) {
-          logEvent("ERROR", `Slash command ${name} failed | ${e.message}`);
+          logEvent("ERROR", `Slash command ${name} failed | ${e.stack}`);
           try {
-            if (!interaction.replied) await interaction.reply({ content: "Command failed to execute.", ephemeral: true });
+            if (!interaction.replied)
+              await interaction.reply({ content: "Command failed to execute.", ephemeral: true });
           } catch {}
         }
         return;
@@ -62,9 +68,10 @@ export default {
         return;
       }
     } catch (e) {
-      logEvent("ERROR", `Interaction handler failed | ${e.message}`);
+      logEvent("ERROR", `Interaction handler failed | ${e.stack}`);
       try {
-        if (!interaction.replied) await interaction.reply({ content: "Error handling input.", ephemeral: true });
+        if (!interaction.replied)
+          await interaction.reply({ content: "Error handling input.", ephemeral: true });
       } catch {}
     }
   },

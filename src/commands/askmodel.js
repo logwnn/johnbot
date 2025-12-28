@@ -30,7 +30,7 @@ export default {
         if (replyMessage && replyMessage.editable) await replyMessage.edit(truncated);
       }
     } catch (err) {
-      logEvent("ERROR", `askmodel command failed | ${err?.message || err}`);
+      logEvent("ERROR", `askmodel command failed | ${err?.stack || err}`);
       try {
         if (!interaction.replied)
           await interaction.reply({ content: "Failed to run askmodel.", ephemeral: true });

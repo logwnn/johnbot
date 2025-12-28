@@ -38,7 +38,7 @@ export default {
         logEvent("INIT", "Fetched guilds on ready");
       }
     } catch (e) {
-      logEvent("WARN", `Failed to fetch guilds on ready | ${e.message}`);
+      logEvent("WARN", `Failed to fetch guilds on ready | ${e.stack}`);
     }
 
     // Register per-guild slash commands on ready (register server-by-server)
@@ -46,7 +46,7 @@ export default {
     try {
       await registerSlashCommands(client, { scope: "guild" });
     } catch (e) {
-      logEvent("ERROR", `Slash registration failed in ready handler | ${e.message}`);
+      logEvent("ERROR", `Slash registration failed in ready handler | ${e.stack}`);
     }
 
     // Start health server and log archiver
@@ -62,7 +62,7 @@ export default {
         Number(process.env.ARCHIVE_INTERVAL_MS) || 24 * 60 * 60 * 1000
       );
     } catch (e) {
-      logEvent("WARN", `Failed to start health/archiver | ${e.message}`);
+      logEvent("WARN", `Failed to start health/archiver | ${e.stack}`);
     }
   },
 };

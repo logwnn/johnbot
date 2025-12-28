@@ -39,7 +39,7 @@ export async function handleMention(client, message) {
         );
       } catch {}
     } catch (e) {
-      logEvent("ERROR", `Initial reply failed | ${e.message}`);
+      logEvent("ERROR", `Initial reply failed | ${e.stack}`);
       return;
     }
     // Strip mention and set userText
@@ -81,7 +81,7 @@ export async function handleMention(client, message) {
       }
     } catch (e) {
       // do not block response generation
-      logEvent("WARN", `Memory extraction failed in mention handler | ${e.message}`);
+      logEvent("WARN", `Memory extraction failed in mention handler | ${e.stack}`);
     }
 
     try {
@@ -171,15 +171,15 @@ export async function handleMention(client, message) {
             logEvent("INFO", `summarizePersona completed for ${uid}`);
           }
         } catch (err) {
-          logEvent("WARN", `summarizePersona failed | ${err.message}`);
+          logEvent("WARN", `summarizePersona failed | ${err.stack}`);
         }
       } catch (err) {
-        logEvent("WARN", `Failed to update memory meta | ${err.message}`);
+        logEvent("WARN", `Failed to update memory meta | ${err.stack}`);
       }
 
       logEvent("RESPONSE-OK", `Replied to ${uid}`);
     } catch (err) {
-      logEvent("ERROR", `LLM request failed | ${err.message}`);
+      logEvent("ERROR", `LLM request failed | ${err.stack}`);
       try {
         if (replyMessage && replyMessage.editable) await replyMessage.edit(config.errorReply);
         else await message.reply(config.errorReply);
@@ -187,7 +187,7 @@ export async function handleMention(client, message) {
       return;
     }
   } catch (e) {
-    logEvent("ERROR", `Mention handler failed | ${e.message}`);
+    logEvent("ERROR", `Mention handler failed | ${e.stack}`);
   }
 }
 

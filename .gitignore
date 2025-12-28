@@ -1,9 +1,8 @@
 .env
+node_modules
 memory.json
-confessions.json
 blacklist.json
+confessions.json
+voiceStateSubscribers.json
 logs
 *.jsonl
-node_modules
-scripts
-backup-index.js

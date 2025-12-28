@@ -3,11 +3,11 @@ import { logEvent } from "../utils/logger.js";
 
 export default {
   name: "say",
-  description: "Make the bot say something (owner only).",
+  description: "Make John say something.",
   permissions: [],
   data: new SlashCommandBuilder()
     .setName("say")
-    .setDescription("Make the bot say something")
+    .setDescription("Make John say something")
     .addStringOption((opt) =>
       opt.setName("instruction").setDescription("Text to send").setRequired(true)
     ),

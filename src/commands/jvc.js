@@ -18,9 +18,11 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default {
   name: "jvc",
-  description: "John joins VC, listens, and responds with GPT-Audio (optimized)",
+  description: "John joins VC, listens, and responds with GPT-Audio",
   permissions: ["OWNER"],
-  data: new SlashCommandBuilder().setName("jvc").setDescription("John joins VC and listens to you"),
+  data: new SlashCommandBuilder()
+    .setName("jvc")
+    .setDescription("John joins VC, listens, and responds with GPT-Audio"),
 
   async execute(client, message) {
     await message.reply("Use /jvc in a voice channel!");
@@ -137,7 +139,7 @@ export default {
           await new Promise((resolve) => player.once("idle", resolve));
         } catch (err) {
           console.error("Error handling user speech:", err);
-          logEvent("ERROR", `User speech handling failed: ${err.message}`);
+          logEvent("ERROR", `User speech handling failed: ${err.stack}`);
         } finally {
           isProcessing = false;
         }

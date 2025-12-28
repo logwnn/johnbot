@@ -5,6 +5,7 @@ import { logEvent } from "./logger.js";
 const MEMORY_FILE = path.join(process.cwd(), "memory.json");
 const BLACKLIST_FILE = path.join(process.cwd(), "blacklist.json");
 const CONFESSIONS_FILE = path.join(process.cwd(), "confessions.json");
+const VOICESTATESUBSCRIBERS_FILE = path.join(process.cwd(), "voiceStateSubscribers.json");
 
 function ensureStorage() {
   if (!fs.existsSync(CONFESSIONS_FILE)) {
@@ -34,8 +35,8 @@ export function loadBlacklist() {
   }
 }
 
-export function saveBlacklist(list) {
-  fs.writeFileSync(BLACKLIST_FILE, JSON.stringify(list, null, 2));
+export function saveBlacklist(data) {
+  fs.writeFileSync(BLACKLIST_FILE, JSON.stringify(data, null, 2));
 }
 
 export function loadConfessions() {
@@ -48,7 +49,7 @@ export function loadConfessions() {
     }
     return parsed;
   } catch (err) {
-    logEvent("ERROR", `Failed to load confessions: ${err.message}`);
+    logEvent("ERROR", `Failed to load confessions: ${err.stack}`);
     return [];
   }
 }
@@ -58,6 +59,18 @@ export function saveConfessions(confessions) {
   const tmpFile = CONFESSIONS_FILE + ".tmp";
   fs.writeFileSync(tmpFile, JSON.stringify(confessions, null, 2), "utf8");
   fs.renameSync(tmpFile, CONFESSIONS_FILE);
+}
+
+export function loadVoiceStateSubscribers() {
+  if (!fs.existsSync(VOICESTATESUBSCRIBERS_FILE)) {
+    fs.mkdirSync(path.dirname(VOICESTATESUBSCRIBERS_FILE), { recursive: true });
+    fs.writeFileSync(VOICESTATESUBSCRIBERS_FILE, JSON.stringify({}, null, 2));
+  }
+  return JSON.parse(fs.readFileSync(VOICESTATESUBSCRIBERS_FILE, "utf8"));
+}
+
+export function saveVoiceStateSubscribers(data) {
+  fs.writeFileSync(VOICESTATESUBSCRIBERS_FILE, JSON.stringify(data, null, 2));
 }
 
 // Additional helpers
@@ -126,7 +139,7 @@ export async function summarizePersona(userID) {
     try {
       // best-effort logging
       const { logEvent } = await import("./logger.js");
-      logEvent("ERROR", `User summarization failed | ${err.message}`);
+      logEvent("ERROR", `User summarization failed | ${err.stack}`);
     } catch {}
     return null;
   }

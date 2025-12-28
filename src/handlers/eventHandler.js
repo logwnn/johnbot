@@ -15,7 +15,7 @@ export async function registerEventHandlers(client) {
       else client.on(event.name, (...args) => event.execute(client, ...args));
       events.push(event.name);
     } catch (e) {
-      logEvent("error", `Failed to register event ${file}: ${e.message}`);
+      logEvent("error", `Failed to register event ${file}: ${e.stack}`);
     }
   }
   logEvent("info", `Registered events: ${events.join(", ")}`);

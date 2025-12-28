@@ -9,11 +9,32 @@ export async function handleButton(interaction) {
     // Edit profile button -> show modal
     if (id === "profile_edit_btn") {
       logEvent("COMPONENT", `Showing profile edit modal for ${interaction.user.id}`);
-      const modal = new ModalBuilder().setCustomId("edit_profile_modal").setTitle("Edit Your John Memory Profile");
-      const bioInput = new TextInputBuilder().setCustomId("bio_input").setLabel("Short bio (why John should remember you)").setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder("likes ramen, hates scanners");
-      const pronounsInput = new TextInputBuilder().setCustomId("pronouns_input").setLabel("Pronouns").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("they/them");
-      const musicInput = new TextInputBuilder().setCustomId("music_input").setLabel("Favorite music / artists").setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("lofi, indie, whatever");
-      modal.addComponents(new ActionRowBuilder().addComponents(bioInput), new ActionRowBuilder().addComponents(pronounsInput), new ActionRowBuilder().addComponents(musicInput));
+      const modal = new ModalBuilder()
+        .setCustomId("edit_profile_modal")
+        .setTitle("Edit Your John Memory Profile");
+      const bioInput = new TextInputBuilder()
+        .setCustomId("bio_input")
+        .setLabel("Short bio (why John should remember you)")
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(false)
+        .setPlaceholder("likes ramen, hates scanners");
+      const pronounsInput = new TextInputBuilder()
+        .setCustomId("pronouns_input")
+        .setLabel("Pronouns")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setPlaceholder("they/them");
+      const musicInput = new TextInputBuilder()
+        .setCustomId("music_input")
+        .setLabel("Favorite music / artists")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setPlaceholder("lofi, indie, whatever");
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(bioInput),
+        new ActionRowBuilder().addComponents(pronounsInput),
+        new ActionRowBuilder().addComponents(musicInput)
+      );
       await interaction.showModal(modal);
       return;
     }
@@ -45,8 +66,15 @@ export async function handleButton(interaction) {
     // Blacklist add -> show modal
     if (id === "blacklist_add_btn") {
       logEvent("ADMIN", `Showing blacklist-add modal to ${interaction.user.id}`);
-      const modal = new ModalBuilder().setCustomId("blacklist_add_modal").setTitle("Add user to blacklist");
-      const userInput = new TextInputBuilder().setCustomId("blacklist_add_input").setLabel("User ID or mention").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("@user or 123456789012345678");
+      const modal = new ModalBuilder()
+        .setCustomId("blacklist_add_modal")
+        .setTitle("Add user to blacklist");
+      const userInput = new TextInputBuilder()
+        .setCustomId("blacklist_add_input")
+        .setLabel("User ID or mention")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setPlaceholder("@user or 123456789012345678");
       modal.addComponents(new ActionRowBuilder().addComponents(userInput));
       await interaction.showModal(modal);
       return;
@@ -55,16 +83,24 @@ export async function handleButton(interaction) {
     // Blacklist remove -> show modal
     if (id === "blacklist_remove_btn") {
       logEvent("ADMIN", `Showing blacklist-remove modal to ${interaction.user.id}`);
-      const modal = new ModalBuilder().setCustomId("blacklist_remove_modal").setTitle("Remove user from blacklist");
-      const userInput = new TextInputBuilder().setCustomId("blacklist_remove_input").setLabel("User ID or mention").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("@user or 123456789012345678");
+      const modal = new ModalBuilder()
+        .setCustomId("blacklist_remove_modal")
+        .setTitle("Remove user from blacklist");
+      const userInput = new TextInputBuilder()
+        .setCustomId("blacklist_remove_input")
+        .setLabel("User ID or mention")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setPlaceholder("@user or 123456789012345678");
       modal.addComponents(new ActionRowBuilder().addComponents(userInput));
       await interaction.showModal(modal);
       return;
     }
   } catch (e) {
-    logEvent("ERROR", `Button handler failed | ${e.message}`);
+    logEvent("ERROR", `Button handler failed | ${e.stack}`);
     try {
-      if (!interaction.replied) await interaction.reply({ content: "Error handling button.", ephemeral: true });
+      if (!interaction.replied)
+        await interaction.reply({ content: "Error handling button.", ephemeral: true });
     } catch {}
   }
 }
@@ -106,7 +142,10 @@ export async function handleModal(interaction) {
       const input = interaction.fields.getTextInputValue("blacklist_add_input") || "";
       const extracted = input.match(/\d{17,19}/);
       if (!extracted) {
-        await interaction.reply({ content: "Couldn't find a user ID in your input.", ephemeral: true });
+        await interaction.reply({
+          content: "Couldn't find a user ID in your input.",
+          ephemeral: true,
+        });
         return;
       }
       const uid = extracted[0];
@@ -126,15 +165,24 @@ export async function handleModal(interaction) {
         try {
           parsed = JSON.parse(jsonText);
         } catch (e) {
-          await interaction.reply({ content: `Invalid JSON: ${e.message}`, ephemeral: true });
+          await interaction.reply({ content: `Invalid JSON: ${e.stack}`, ephemeral: true });
           return;
         }
         // Only allow top-level updates to a safe whitelist
-        const allowed = ["identity", "interests", "long_term_facts", "relationship_with_assistant", "chat_context"];
+        const allowed = [
+          "identity",
+          "interests",
+          "long_term_facts",
+          "relationship_with_assistant",
+          "chat_context",
+        ];
         const keys = Object.keys(parsed);
         const invalid = keys.filter((k) => !allowed.includes(k));
         if (invalid.length) {
-          await interaction.reply({ content: `Invalid keys present: ${invalid.join(", ")}. Allowed: ${allowed.join(", ")}`, ephemeral: true });
+          await interaction.reply({
+            content: `Invalid keys present: ${invalid.join(", ")}. Allowed: ${allowed.join(", ")}`,
+            ephemeral: true,
+          });
           return;
         }
 
@@ -149,9 +197,10 @@ export async function handleModal(interaction) {
         saveMemory(mem);
         await interaction.reply({ content: "Memory JSON updated.", ephemeral: true });
       } catch (err) {
-        logEvent("ERROR", `Memory JSON modal handling failed | ${err.message}`);
+        logEvent("ERROR", `Memory JSON modal handling failed | ${err.stack}`);
         try {
-          if (!interaction.replied) await interaction.reply({ content: "Failed to update memory.", ephemeral: true });
+          if (!interaction.replied)
+            await interaction.reply({ content: "Failed to update memory.", ephemeral: true });
         } catch {}
       }
       return;
@@ -161,7 +210,10 @@ export async function handleModal(interaction) {
       const input = interaction.fields.getTextInputValue("blacklist_remove_input") || "";
       const extracted = input.match(/\d{17,19}/);
       if (!extracted) {
-        await interaction.reply({ content: "Couldn't find a user ID in your input.", ephemeral: true });
+        await interaction.reply({
+          content: "Couldn't find a user ID in your input.",
+          ephemeral: true,
+        });
         return;
       }
       const uid = extracted[0];
@@ -173,9 +225,10 @@ export async function handleModal(interaction) {
       return;
     }
   } catch (e) {
-    logEvent("ERROR", `Modal handler failed | ${e.message}`);
+    logEvent("ERROR", `Modal handler failed | ${e.stack}`);
     try {
-      if (!interaction.replied) await interaction.reply({ content: "Error handling modal.", ephemeral: true });
+      if (!interaction.replied)
+        await interaction.reply({ content: "Error handling modal.", ephemeral: true });
     } catch {}
   }
 }

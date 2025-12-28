@@ -6,7 +6,10 @@ import { getSlashCommandData } from "./commandHandler.js";
  * scope: 'global' | 'guild' | 'both'
  * guildId (optional): if provided, register only for that guild
  */
-export async function registerSlashCommands(client, { scope = "both", guildId = null, reset = false, timeoutMs = 15000 } = {}) {
+export async function registerSlashCommands(
+  client,
+  { scope = "both", guildId = null, reset = false, timeoutMs = 15000 } = {}
+) {
   const data = getSlashCommandData();
   if (!data || data.length === 0) {
     logEvent("INIT", "No slash commands to register");
@@ -14,7 +17,8 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
   }
 
   // helper to run a promise with timeout
-  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+  const withTimeout = (p, ms) =>
+    Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
   try {
     let registered = 0;
@@ -22,7 +26,6 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
     // Log names of commands we're about to register
     try {
       const names = data.map((d) => d?.name ?? "(unknown)").join(", ");
-      logEvent("INIT", `Preparing to register commands: ${names}`);
     } catch {}
 
     // Only clear scopes requested by the caller when reset=true
@@ -30,7 +33,9 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
       try {
         if (scope === "guild" || scope === "both") {
           // Clear targeted guilds (or all cached guilds)
-          const targets = guildId ? [client.guilds.cache.get(guildId)].filter(Boolean) : Array.from(client.guilds.cache.values());
+          const targets = guildId
+            ? [client.guilds.cache.get(guildId)].filter(Boolean)
+            : Array.from(client.guilds.cache.values());
           await Promise.allSettled(
             targets.map((g) =>
               withTimeout(
@@ -44,7 +49,7 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
                       logEvent("INIT", `Guild ${g.id} now has ${list.size} commands after clear`);
                     } catch {}
                   } catch (e) {
-                    logEvent("WARN", `Failed to clear guild commands for ${g.id} | ${e.message}`);
+                    logEvent("WARN", `Failed to clear guild commands for ${g.id} | ${e.stack}`);
                   }
                 })(),
                 timeoutMs
@@ -62,11 +67,11 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
               logEvent("INIT", `Global application commands after clear: ${list.size}`);
             } catch {}
           } catch (e) {
-            logEvent("WARN", `Failed to clear global commands | ${e.message}`);
+            logEvent("WARN", `Failed to clear global commands | ${e.stack}`);
           }
         }
       } catch (e) {
-        logEvent("WARN", `Reset step failed | ${e.message}`);
+        logEvent("WARN", `Reset step failed | ${e.stack}`);
       }
     }
 
@@ -78,21 +83,22 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
           await client.guilds.fetch();
           logEvent("INIT", "Fetched guilds for registration");
         } catch (e) {
-          logEvent("WARN", `Failed to fetch guilds for registration | ${e.message}`);
+          logEvent("WARN", `Failed to fetch guilds for registration | ${e.stack}`);
         }
       }
 
       if (!client.guilds.cache || client.guilds.cache.size === 0) {
         logEvent("INFO", "No guilds in cache even after fetch; skipping guild registration");
       } else {
-        const targets = guildId ? [client.guilds.cache.get(guildId)].filter(Boolean) : Array.from(client.guilds.cache.values());
+        const targets = guildId
+          ? [client.guilds.cache.get(guildId)].filter(Boolean)
+          : Array.from(client.guilds.cache.values());
         const results = await Promise.allSettled(
           targets.map((g) =>
             withTimeout(
               (async () => {
                 try {
                   await g.commands.set(data);
-                  logEvent("INIT", `Registered ${data.length} commands for guild ${g.id}`);
                   // fetch and log names that actually landed
                   try {
                     const list = await g.commands.fetch();
@@ -101,7 +107,7 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
                   } catch {}
                   return data.length;
                 } catch (e) {
-                  logEvent("WARN", `Failed to register guild commands for ${g.id} | ${e.message}`);
+                  logEvent("WARN", `Failed to register guild commands for ${g.id} | ${e.stack}`);
                   return 0;
                 }
               })(),
@@ -119,7 +125,6 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
     if (scope === "global" || scope === "both") {
       try {
         await withTimeout(client.application.commands.set(data), timeoutMs);
-        logEvent("INIT", `Registered ${data.length} global application commands`);
         try {
           const list = await client.application.commands.fetch();
           const names = list.map((c) => c.name).join(", ");
@@ -127,13 +132,13 @@ export async function registerSlashCommands(client, { scope = "both", guildId = 
         } catch {}
         registered += data.length;
       } catch (e) {
-        logEvent("WARN", `Failed to register global commands | ${e.message}`);
+        logEvent("WARN", `Failed to register global commands | ${e.stack}`);
       }
     }
 
     return { registered };
   } catch (e) {
-    logEvent("ERROR", `Slash registration failed | ${e.message}`);
-    return { registered: 0, error: e.message };
+    logEvent("ERROR", `Slash registration failed | ${e.stack}`);
+    return { registered: 0, error: e.stack };
   }
 }

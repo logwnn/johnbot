@@ -14,7 +14,9 @@ function ensureDirs() {
 export async function archiveOldLogs(days = 7) {
   ensureDirs();
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  const files = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith(".jsonl") || f.endsWith(".txt") || f.endsWith(".log.gz"));
+  const files = fs
+    .readdirSync(LOG_DIR)
+    .filter((f) => f.endsWith(".jsonl") || f.endsWith(".txt") || f.endsWith(".log.gz"));
   let archived = 0;
   for (const file of files) {
     const full = path.join(LOG_DIR, file);
@@ -42,7 +44,7 @@ export async function archiveOldLogs(days = 7) {
       } catch {}
       archived++;
     } catch (e) {
-      logEvent("WARN", `Archiving failed for ${file} | ${e.message}`);
+      logEvent("WARN", `Archiving failed for ${file} | ${e.stack}`);
     }
   }
   logEvent("INIT", `Archived ${archived} log files older than ${days} days`);
