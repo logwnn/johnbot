@@ -13,7 +13,6 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
           const user = await client.users.fetch(userId);
           const dm = await user.createDM();
           const messages = [
-            `You're mine.`,
             `https://media.discordapp.net/attachments/1351847916938985515/1394575628786733057/image.png?ex=69517f83&is=69502e03&hm=71f5a34043574db29f6a8f99ca6a8dca4a935418e15d3c0a2ead2868484be412&=&format=webp&quality=lossless&width=669&height=556`,
             `https://media.discordapp.net/attachments/1351847916938985515/1352793818529009837/image.png?ex=6951c46c&is=695072ec&hm=4904c4d2b58585e1e5062f6ecaa0c515b0347297aa08bb85b4118311757d5a29&=&format=webp&quality=lossless&width=504&height=218`,
             `https://media.discordapp.net/attachments/1351847916938985515/1453918118731583519/image.png?ex=69512c83&is=694fdb03&hm=5888f66191a0f9ef4b1d0446f8f8508d1f6c1f5e31163cfe4288796e72516ce2&=&format=webp&quality=lossless&width=603&height=158`,
@@ -27,6 +26,7 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `https://media.discordapp.net/attachments/1351847916938985515/1410639462119247982/SPOILER_image.png?ex=69514560&is=694ff3e0&hm=7360a78ada89e288e72bc83efe1621d1a418959b7c33bd4e7b8cf356f534f702&=&format=webp&quality=lossless&width=815&height=950`,
             `https://cdn.discordapp.com/attachments/1351847916938985515/1398837540823236609/cachoro.gif?ex=69512eba&is=694fdd3a&hm=cf7333affed70ef61e9a23a27b8bdf48a5862715bc920f57e5b4fbdc11020fe6&`,
             `"cherry blossom iced tea"`,
+            `You're mine.`,
             `"i love making kids watch me masturbate" - mewgrim`,
             `goo goo gaa gaa age regressing goo goo gaa gaa - mewgrim`,
             `"Hopeth on myme cock until my erection ceases to exist" - ungirm`,

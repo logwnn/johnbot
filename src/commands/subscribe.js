@@ -29,9 +29,12 @@ export default {
     if (!subs[userId]) {
       subs[userId] = [];
     }
-    if (subs[userId].includes(channel.id)) {
+    const index = subs[userId].indexOf(channel.id);
+    if (index !== -1) {
+      subs[userId].splice(index, 1);
+      saveVoiceStateSubscribers(subs);
       return interaction.reply({
-        content: `You are already subscribed to **${channel.name}**.`,
+        content: `You have been unsubscribed from **${channel.name}**.`,
         ephemeral: true,
       });
     }
