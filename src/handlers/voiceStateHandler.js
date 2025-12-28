@@ -12,7 +12,7 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
         try {
           const user = await client.users.fetch(userId);
           const dm = await user.createDM();
-          const messages = [
+          const randomMessages = [
             `https://media.discordapp.net/attachments/1327432748402741282/1345997793634025522/image.png?ex=69516ee1&is=69501d61&hm=4986c54fd558cb9254e10c57414e2d07845d2ae5e344bea45c6aeccdbe5ca721&=&format=webp&quality=lossless&width=405&height=78`,
             `https://media.discordapp.net/attachments/1351847916938985515/1394575628786733057/image.png?ex=69517f83&is=69502e03&hm=71f5a34043574db29f6a8f99ca6a8dca4a935418e15d3c0a2ead2868484be412&=&format=webp&quality=lossless&width=669&height=556`,
             `https://media.discordapp.net/attachments/1351847916938985515/1352793818529009837/image.png?ex=6951c46c&is=695072ec&hm=4904c4d2b58585e1e5062f6ecaa0c515b0347297aa08bb85b4118311757d5a29&=&format=webp&quality=lossless&width=504&height=218`,
@@ -46,10 +46,24 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `"I'm gonna put kidney stones in your salad and you will think they are croutons"`,
             `"I cant wait to be a pedophile when I turn 18."`,
             `"Why is somebody named PRECUM trying to add me?"`,
+            `ughh, this bath is so warm mommy`,
+            `This is a special message for ungrim... if youre ready this then...\n||Redbulls are better than monsters Take the L\nWE GOT A, NUMBER 1 VICTORY ROYAL FORTNITE YEA BE BOUTA GET DOWN||`,
           ];
+          const randomMessages2 = [
+            `cuck detected in ${newState.channel.name}!!`,
+            `Nihaw`,
+            `can u pls`,
+            `pls pls pls`,
+            `ugh mommy`,
+            `John thinks u should`,
+            `redbull is better than monster but also u should`,
+          ];
+          logEvent("VC-NOTIFY", `for user=${userId} channel=${channelId}`);
           await dm.send(
-            `drag ${newState.member.user.username}... NOW NOW NOW!!\n\n${
-              messages[Math.floor(Math.random() * messages.length)]
+            `${randomMessages2[Math.floor(Math.random() * randomMessages2.length)]} drag ${
+              newState.member.user.username
+            }... NOW NOW NOW!!\n\n${
+              randomMessages[Math.floor(Math.random() * randomMessages.length)]
             }`
           );
         } catch (err) {

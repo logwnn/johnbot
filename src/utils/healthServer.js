@@ -86,7 +86,7 @@ export async function startHealthServer(
         }`
       );
 
-      const wantsHtml = req.query.format === "html" || req.accepts("html");
+      const wantsHtml = req.query.format === "html";
       if (wantsHtml) {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         const rows = files
@@ -136,7 +136,7 @@ export async function startHealthServer(
 
       const content = fs.readFileSync(filePath, "utf8");
       const isJsonl = name.endsWith(".jsonl");
-      const wantsHtml = req.query.format === "html" || req.accepts("html");
+      const wantsHtml = req.query.format === "html";
       if (!lines) {
         logEvent("HEALTH", `Log view requested: ${name} by ${req.ip || req.socket.remoteAddress}`);
         if (wantsHtml) {
