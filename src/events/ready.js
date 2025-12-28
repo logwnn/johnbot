@@ -15,12 +15,13 @@ export default {
       { name: "the void" },
       { name: "99 Luftballons" },
       { name: "the Ultimate Question of Life, the Universe, and Everything" },
-      { name: "42" },
-      { name: "Don't Panic." },
       { name: "So long, and thanks for all the fish." },
       { name: "in a towel rn" },
       { name: "ready for some rizzing" },
       { name: "You're mine." },
+      { name: "Six Seven" },
+      { name: "WE ARE CHARLIE KIRK" },
+      { name: "WE ARE JOLLY GOOD" },
     ];
     const setRandomStatus = () => {
       const random = randomStatuses[Math.floor(Math.random() * randomStatuses.length)];
