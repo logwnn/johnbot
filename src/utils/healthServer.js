@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import { logEvent } from "./logger.js";
 import config from "./config.js";
+import basicAuth from "express-basic-auth";
 
 export async function startHealthServer(
   client,
@@ -17,7 +18,9 @@ export async function startHealthServer(
       "ERROR",
       `Express not installed. Health server requires express. Install with: npm i express`
     );
-    throw new Error("Express not installed. Run: npm i express");
+    throw new Error(
+      "Express not installed. Run: npm i express, also keep in mind you need express-basic-auth"
+    );
   }
 
   const app = express();
@@ -32,6 +35,111 @@ export async function startHealthServer(
       (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
     );
   }
+
+  app.get("/", (req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html");
+      const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>johnbot — Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background: #0f1115;
+        color: #e6e6e6;
+        margin: 0;
+        padding: 40px;
+      }
+
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+        font-size: 2rem;
+      }
+
+      .notice {
+        background: #161a22;
+        border-left: 4px solid #3b82f6;
+        padding: 16px;
+        margin: 24px 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .links {
+        margin: 24px 0;
+      }
+
+      .links a {
+        display: block;
+        margin-bottom: 10px;
+        color: #93c5fd;
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+
+      .hint {
+        margin-top: 32px;
+        font-size: 0.85rem;
+        color: #a1a1aa;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>johnbot</h1>
+      <div>Administrative dashboard</div>
+
+      <div class="notice">
+        <strong>Authorized Access Only</strong><br />
+        This system is intended for authorized users only. All access and activity
+        may be logged and monitored.
+      </div>
+
+      <div class="links">
+        <a href="/health">→ Server health</a>
+        <a href="/logs">→ Server logs</a>
+      </div>
+
+      <div class="hint">
+        Most endpoints return JSON by default.<br />
+        Append <code>?format=html</code> to the URL for a readable HTML view.
+      </div>
+    </div>
+  </body>
+</html>`;
+      logEvent("HEALTH", `Root requested from ${req.ip || req.socket.remoteAddress}`);
+      res.send(html);
+    } catch (e) {
+      logEvent("ERROR", `Root handler failed | ${e.stack}`);
+      res.status(500).send("Internal error");
+    }
+  });
+
+  app.use(
+    basicAuth({
+      users: {
+        admin: process.env.EXPRESS_SERVER_ADMINPASSWORD,
+      },
+      challenge: true, // forces browser login popup
+      realm: " All access and activity is logged and monitored.",
+      unauthorizedResponse: (req) =>
+        "This system is intended for authorized users only. All access and activity is logged and monitored.",
+    })
+  );
 
   app.get("/health", (req, res) => {
     try {
@@ -51,18 +159,6 @@ export async function startHealthServer(
     } catch (e) {
       logEvent("ERROR", `Health handler failed | ${e.stack}`);
       return res.status(500).json({ error: "Internal error" });
-    }
-  });
-
-  app.get("/", (req, res) => {
-    try {
-      res.setHeader("Content-Type", "text/html");
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>johnbot health</title></head><body><h1>johnbot health server</h1><ul><li><a href="/health">/health</a></li><li><a href="/logs">/logs (list)</a></li></ul></body></html>`;
-      logEvent("HEALTH", `Root requested from ${req.ip || req.socket.remoteAddress}`);
-      res.send(html);
-    } catch (e) {
-      logEvent("ERROR", `Root handler failed | ${e.stack}`);
-      res.status(500).send("Internal error");
     }
   });
 
