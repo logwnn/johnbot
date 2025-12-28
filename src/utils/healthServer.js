@@ -4,6 +4,7 @@ import os from "os";
 import { logEvent } from "./logger.js";
 import config from "./config.js";
 import basicAuth from "express-basic-auth";
+import crypto from "crypto";
 
 export async function startHealthServer(
   client,
@@ -35,6 +36,57 @@ export async function startHealthServer(
       (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
     );
   }
+
+  const USERNAME = "admin";
+  const PASSWORD = process.env.EXPRESS_SERVER_ADMINPASSWORD || "453278_changeme_093578";
+  const BLOCK_AFTER = 5;
+  const failedAttempts = {};
+  // Helper to parse Basic Auth header
+  function parseBasicAuth(header) {
+    if (!header || !header.startsWith("Basic ")) return null;
+    const base64Credentials = header.slice(6);
+    const credentials = Buffer.from(base64Credentials, "base64").toString("utf8");
+    const [user, pass] = credentials.split(":", 2);
+    return { user, pass };
+  }
+  // Middleware to get client IP
+  app.use((req, res, next) => {
+    req._clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    next();
+  });
+  // Middleware to block clients after too many failed attempts
+  app.use((req, res, next) => {
+    const ip = req._clientIp;
+    if ((failedAttempts[ip] || 0) >= BLOCK_AFTER) {
+      logEvent("IP_BLOCKED", `ip= ${ip} path=${req.originalUrl}`);
+      return res.destroy();
+    }
+    next();
+  });
+  // Basic Auth Middleware
+  app.use((req, res, next) => {
+    const ip = req._clientIp;
+    const auth = parseBasicAuth(req.headers.authorization);
+    if (auth && auth.user === USERNAME && auth.pass === PASSWORD) {
+      // Success: reset failed attempts
+      failedAttempts[ip] = 0;
+      logEvent("AUTH_SUCCESS", `user=${auth.user} ip=${ip}`);
+      return next();
+    }
+    // Failure
+    failedAttempts[ip] = (failedAttempts[ip] || 0) + 1;
+    logEvent(
+      "AUTH_FAILURE",
+      `user=${auth?.user || "none"} ip=${ip} failures=${failedAttempts[ip]}`
+    );
+    // Respond with 401 + standard Basic Auth challenge
+    res.set("WWW-Authenticate", 'Basic realm="Private Page, Authorized Users Only"');
+    return res
+      .status(401)
+      .send(
+        "This system is for authorized users only. All access and activity is logged and monitored."
+      );
+  });
 
   app.get("/", (req, res) => {
     try {
@@ -128,18 +180,6 @@ export async function startHealthServer(
       res.status(500).send("Internal error");
     }
   });
-
-  app.use(
-    basicAuth({
-      users: {
-        admin: process.env.EXPRESS_SERVER_ADMINPASSWORD,
-      },
-      challenge: true, // forces browser login popup
-      realm: " All access and activity is logged and monitored.",
-      unauthorizedResponse: (req) =>
-        "This system is intended for authorized users only. All access and activity is logged and monitored.",
-    })
-  );
 
   app.get("/health", (req, res) => {
     try {
