@@ -33,7 +33,7 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `"i told her how i wanted to still talk to him and that how ir using him (not in a bad way i was NOt talking bad about u cuz i was using him too)"`,
           ];
           await dm.send(
-            `drag ${newState.member.user.username} ....NOOOW!!!!\n\n${
+            `drag ${newState.member.user.username}... NOW NOW NOW!!\n\n${
               messages[Math.floor(Math.random() * messages.length)]
             }`
           );
