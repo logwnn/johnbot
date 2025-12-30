@@ -13,6 +13,8 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
           const user = await client.users.fetch(userId);
           const dm = await user.createDM();
           const randomMessages = [
+            `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXps6CCMRcTBbh5VMUXFuMmXEFIHWPS9pkQw&s`,
+            `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSIc04-KcvYhqAg4seCc7d4CvGObDDvtz1tlg&s`,
             `https://media.discordapp.net/attachments/1327432748402741282/1345997793634025522/image.png?ex=69516ee1&is=69501d61&hm=4986c54fd558cb9254e10c57414e2d07845d2ae5e344bea45c6aeccdbe5ca721&=&format=webp&quality=lossless&width=405&height=78`,
             `https://media.discordapp.net/attachments/1351847916938985515/1394575628786733057/image.png?ex=69517f83&is=69502e03&hm=71f5a34043574db29f6a8f99ca6a8dca4a935418e15d3c0a2ead2868484be412&=&format=webp&quality=lossless&width=669&height=556`,
             `https://media.discordapp.net/attachments/1351847916938985515/1352793818529009837/image.png?ex=6951c46c&is=695072ec&hm=4904c4d2b58585e1e5062f6ecaa0c515b0347297aa08bb85b4118311757d5a29&=&format=webp&quality=lossless&width=504&height=218`,
@@ -48,6 +50,12 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `"Why is somebody named PRECUM trying to add me?"`,
             `ughh, this bath is so warm mommy`,
             `This is a special message for ungrim... if youre ready this then...\n||Redbulls are better than monsters Take the L\nWE GOT A, NUMBER 1 VICTORY ROYAL FORTNITE YEA BE BOUTA GET DOWN||`,
+            `"one penis in my ass, please!!"`,
+            `John has ran into an unexpected error: ur a bitch`,
+            `Fun fact: john was originally a gay furry hentai bot`,
+            `John knows where you live. John is aroused.`,
+            `WHEN I WAS... A YOUNG BOY... MY FATHER TOOK ME INTO THE CITY`,
+            `"i wish i had a dominant tomboy girlfriend..."`,
           ];
           const randomMessages2 = [
             `cuck detected in ${newState.channel.name}!!`,
@@ -57,6 +65,12 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `ugh mommy`,
             `John thinks u should`,
             `redbull is better than monster but also u should`,
+            `maidenless detected...`,
+            `bitchless detected...`,
+            `${newState.member.user.username} wants to lose their dignity`,
+            `nya~!`,
+            `I need you to`,
+            `pwetty pwease`,
           ];
           logEvent("VC-NOTIFY", `for user=${userId} channel=${channelId}`);
           await dm.send(

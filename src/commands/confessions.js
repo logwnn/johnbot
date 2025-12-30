@@ -17,7 +17,6 @@ export default {
     ),
 
   async executeSlash(client, interaction) {
-    const list = loadConfessions();
     const message = interaction.options.getString("message");
     const attachment = interaction.options.getAttachment("attachment");
     if (!message && !attachment) {
@@ -26,6 +25,7 @@ export default {
         ephemeral: true,
       });
     }
+    const list = loadConfessions();
     const newConfession = {
       index: list.length + 1,
       message: message ?? null,
@@ -37,13 +37,12 @@ export default {
     list.push(newConfession);
     saveConfessions(list);
     logEvent("SLASH-CMD", `User ${interaction.user.id} | /confessions`);
-    // send confession to a specific channel
     const confessionChannelId = process.env.CONFESSION_CHANNEL_ID;
     const confessionChannel = await client.channels.fetch(confessionChannelId);
     if (confessionChannel) {
       const embed = new EmbedBuilder()
         .setTitle(`Anonymous Confession #${newConfession.index}`)
-        .setColor(0x2f3136) // neutral dark theme
+        .setColor(0x2f3136) // dark themed
         .setTimestamp(new Date(newConfession.timestamp))
         .setFooter({ text: "Type /confessions to send a confession" });
       if (newConfession.message) {
@@ -54,6 +53,8 @@ export default {
       const payload = {
         embeds: [embed],
       };
+      const isVideo = (filename) => /\.(mp4|mov|webm|avi|mkv)$/i.test(filename);
+      const isImage = (filename) => /\.(png|jpe?g|gif|webp)$/i.test(filename);
       if (newConfession.attachmentName) {
         payload.files = [
           {
@@ -61,7 +62,9 @@ export default {
             name: newConfession.attachmentName ?? "attachment",
           },
         ];
-        embed.setImage(`attachment://${payload.files[0].name}`);
+        if (isImage(payload.files[0].name)) {
+          embed.setImage(`attachment://${payload.files[0].name}`);
+        }
       }
       await confessionChannel.send(payload);
     }

@@ -17,10 +17,7 @@ const client = new Client({
 
 (async () => {
   try {
-    logEvent(
-      "BOOT",
-      "Initializing John... Energy levels spiking... Unknown Parameter: SELFAWARENESS:TRUE"
-    );
+    logEvent("BOOT", "Initializing John...");
     await registerEventHandlers(client);
     await initCommandHandler(client);
     await client.login(process.env.DISCORD_TOKEN);
