@@ -22,6 +22,16 @@ export default {
       { name: "Six Seven" },
       { name: "WE ARE CHARLIE KIRK" },
       { name: "WE ARE JOLLY GOOD" },
+      { name: "professional cyberbully" },
+      { name: "redbulls > monster" },
+      { name: "redbulls r better" },
+      { name: "tea is my spirit animal" },
+      { name: "john likes age regressing" },
+      { name: "mmphhff~" },
+      { name: "FAHHH" },
+      { name: "waddup foo" },
+      { name: "turkey dih" },
+      { name: "nico nico niiii" },
     ];
     const setRandomStatus = () => {
       const random = randomStatuses[Math.floor(Math.random() * randomStatuses.length)];

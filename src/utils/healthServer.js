@@ -3,8 +3,6 @@ import fs from "fs";
 import os from "os";
 import { logEvent } from "./logger.js";
 import config from "./config.js";
-import basicAuth from "express-basic-auth";
-import crypto from "crypto";
 
 export async function startHealthServer(
   client,
@@ -39,7 +37,7 @@ export async function startHealthServer(
 
   const USERNAME = "admin";
   const PASSWORD = process.env.EXPRESS_SERVER_ADMINPASSWORD || "453278_changeme_093578";
-  const BLOCK_AFTER = 5;
+  const BLOCK_AFTER = 10;
   const failedAttempts = {};
   // Helper to parse Basic Auth header
   function parseBasicAuth(header) {

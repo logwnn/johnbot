@@ -73,6 +73,9 @@ export default {
       "Confession received! Thanks for sharing.",
       "Your secret is safe with Johnny boy...",
       "Anonymous confession submitted successfully.",
+      "Thank u for submitting ur deepest darkest secrets!",
+      "John will keep your confessions safe.",
+      "Sent, nihaw!",
     ];
     return interaction.reply({
       content: randomConfessionReplies[Math.floor(Math.random() * randomConfessionReplies.length)],
