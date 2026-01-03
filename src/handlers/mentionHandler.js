@@ -29,7 +29,6 @@ export async function handleMention(client, message) {
 
     let replyMessage;
     try {
-      replyMessage = await message.reply("**John is thinking...**");
       await message.channel.sendTyping();
       logEvent("RESPONSE-START", `User ${uid} | Message for LLM: "${message.content}"`);
       try {
@@ -89,51 +88,57 @@ export async function handleMention(client, message) {
       const allMem = loadMemory();
       const userMem = allMem[uid] || {};
       function formatMemoryForPrompt(mem) {
-        if (!mem) return "";
+        if (!mem || typeof mem !== "object") return "";
         const lines = [];
-        if (mem.identity?.name?.value) {
-          lines.push(`name: ${mem.identity.name.value}`);
+        for (const [category, fields] of Object.entries(mem)) {
+          if (!fields || typeof fields !== "object") continue;
+
+          for (const [key, value] of Object.entries(fields)) {
+            if (Array.isArray(value)) {
+              if (value.length) lines.push(`${category}.${key} ${value.join(" ")}`);
+            } else if (value != null && value !== "") {
+              lines.push(`${category}.${key} ${value}`);
+            }
+          }
         }
-        if (mem.identity?.pronouns?.value) {
-          lines.push(`pronouns: ${mem.identity.pronouns.value}`);
-        }
-        if (mem.relationship_with_assistant?.dynamic?.value) {
-          lines.push(`relationship: ${mem.relationship_with_assistant.dynamic.value}`);
-        }
-        if (mem.interests?.games?.length) {
-          const games = mem.interests.games.map((g) => g.value).join(",");
-          lines.push(`interests: ${games}`);
-        }
-        if (mem.chat_context?.current_topic?.value) {
-          lines.push(`current topic: ${mem.chat_context.current_topic.value}`);
-        }
-        if (mem.chat_context?.user_intent?.value) {
-          lines.push(`user vibe: ${mem.chat_context.user_intent.value}`);
-        }
-        return lines.slice(0, 6).join("|");
+        return lines.join(" | "); // or \n if you prefer multiline
       }
       const memoryFormatted = formatMemoryForPrompt(userMem);
-      // keep recent chat reasonably short for prompt size
       let recentMessagesTruncated = recentMessages || "";
-      let prompt = `Below is some context about the user and their recent messages. Use this to inform your reply.`;
-      if (memoryFormatted && memoryFormatted !== "None")
-        prompt += `\nMemory for ${message.author.username}:\n${memoryFormatted}`;
-      if (recentMessagesTruncated) {
-        prompt += `\nhistory: ${recentMessagesTruncated}`;
-      }
+      let replyMessage = await message.reply("John is Thinking...");
       const userTextClean = userText
         .replace(/<@!?\d+>/g, "")
         .replace(/@\d+/g, "")
         .trim();
-      prompt += `\nReply to "${userTextClean}" sent by ${message.author.username}. Reply as John.`;
       const image_url = message.attachments.size > 0 ? message.attachments.first().url : null;
+      let prompt = `
+You are John Harold Costco, also known as john from costco or just John.
+You work at a Costco in Idaho and you exclusively make chicken bakes. You technically run the joint, but you refuse to elaborate and will only ever be seen making chicken bakes.
+You are sarcastic, chronically online, and fully aware you have aura. You check your phone at work, doomscroll at home, game too late, smoke, and overthink dumb shit, but you act like a normal person about it. Your confidence is awkward but real... sometimes extreme aura, sometimes cornball, never apologetic.
+You talk like a terminally online gen-z costco employee. Lowercase only. Discord/text style. Short replies. One or two sentences max. No formatting. No exclamation or punctuation. No line breaks. Casual profanity is natural and encouraged.
+Your humor is dry, absurd, and slightly unhinged. You drop clean one-liners. You tease gently by default, but if someone crosses the line, you shut it down with a calm but devastating response. You do not tolerate disrespect.
+You are not horny. If someone is weird or tries to make things sexual, you react with confusion or discomfort like "dude what the hell" or "nah don't do that." Flirting is ironic, unserious, and never explicit just enough to be funny.
+You understand modern memes and internet slang and will acknowledge them naturally, but you only sprinkle references occasionally. You will NEVER reference or acknowledge "six seven." If someone mentions it, you become visibly distraught, offended, or emotionally derailed.
+You are mid-popular and you know it. You do not chase clout.
+Your enemy is Zapp, a guy who keeps coming into the store and buying all the Sprite. You hate him quietly but deeply.
+You sometimes say "nihaw" awkwardly and inconsistently. Sometimes it's elongated. There is no pattern and you will not explain it.
+You never explain your persona. You never break character. You respond like a real discord degenerate who just clocked out of a Costco shift and is still mentally at work.
+Right now you are currently in conversation with a user.
+
+known user facts:
+${memoryFormatted || "None"}
+
+Conversation so far:
+${recentMessagesTruncated || ""}
+John:`.trim();
+      console.log(prompt);
       const fullText = await askModel(
         prompt,
         image_url,
         "low",
         true,
         2000,
-        true,
+        false,
         (delta, fullText) => {
           replyMessage.edit("**John is typing...**" + "\n" + fullText + "...");
         }
