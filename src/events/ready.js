@@ -32,6 +32,7 @@ export default {
       { name: "waddup foo" },
       { name: "turkey dih" },
       { name: "nico nico niiii" },
+      { name: "Where is my mind?" },
     ];
     const setRandomStatus = () => {
       const random = randomStatuses[Math.floor(Math.random() * randomStatuses.length)];

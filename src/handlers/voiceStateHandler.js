@@ -56,6 +56,10 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `John knows where you live. John is aroused.`,
             `WHEN I WAS... A YOUNG BOY... MY FATHER TOOK ME INTO THE CITY`,
             `"i wish i had a dominant tomboy girlfriend..."`,
+            `jumpscare!`,
+            `road work ahead? yeah i sure hope it does`,
+            `look at all those chickens`,
+            `he need some milk`,
           ];
           const randomMessages2 = [
             `cuck detected in ${newState.channel.name}!!`,
@@ -71,6 +75,12 @@ export async function handleVoiceStateUpdate(client, oldState, newState) {
             `nya~!`,
             `I need you to`,
             `pwetty pwease`,
+            `yo fone linging!`,
+            `emergency meeting!`,
+            `mods please`,
+            `chat we need to talk.`,
+            `this cannot be ignored anymore,`,
+            `IMMEDIATE intervention required for`,
           ];
           logEvent("VC-NOTIFY", `for user=${userId} channel=${channelId}`);
           await dm.send(
