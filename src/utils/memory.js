@@ -161,8 +161,8 @@ export async function extractMemory(userID, messageText, recentMessages) {
 You are extracting long-term memory from a user message
 OUTPUT RULES
 - Only use the categories: identity, relationship_with_assistant, interests, long_term_facts, chat_context
+- Your job is to populate sub categories such as identity.name, interests.hobbies, etc.
 - Always use named keys (no numbers)
-- Single values for identity, relationship_with_assistant, long_term_facts, chat_context
 - Arrays only for interests
 - Output JSON only
 - If no memory found, output {}
@@ -171,6 +171,7 @@ USER MESSAGE: "${messageText}"
 `;
   const raw = await askModel(prompt, null, "minimal", false, 500, false);
   // ---------- SAFE JSON PARSE ----------
+  console.log(raw);
   let parsed = null;
   try {
     parsed = JSON.parse(raw);

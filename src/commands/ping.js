@@ -10,9 +10,6 @@ export default {
     .setName("ping")
     .setDescription("Returns pong, latency and system info."),
   async executeSlash(client, interaction) {
-    try {
-      logEvent("SLASH-CMD", `ping used by ${interaction.user.id}`);
-    } catch {}
     await interaction.reply({ content: "Collecting data...", ephemeral: true });
     const start = Date.now();
     const ws = client.ws?.ping ?? "unknown";

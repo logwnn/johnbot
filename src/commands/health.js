@@ -1,7 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import os from "os";
 import { logEvent } from "../utils/logger.js";
-import config from "../utils/config.js";
 
 export default {
   name: "health",

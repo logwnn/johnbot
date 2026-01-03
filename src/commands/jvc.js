@@ -23,29 +23,22 @@ export default {
   data: new SlashCommandBuilder()
     .setName("jvc")
     .setDescription("John joins VC, listens, and responds with GPT-Audio"),
-
   async execute(client, message) {
     await message.reply("Use /jvc in a voice channel!");
   },
-
   async executeSlash(client, interaction) {
     if (!interaction.member.voice.channel)
       return interaction.reply({ content: "Join a voice channel first.", ephemeral: true });
-
     const channel = interaction.member.voice.channel;
-
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
       adapterCreator: channel.guild.voiceAdapterCreator,
       selfDeaf: false,
     });
-
     const player = createAudioPlayer();
     connection.subscribe(player);
-
     await interaction.reply({ content: "Joined VC! Listening...", ephemeral: true });
-
     let isProcessing = false; // Prevent multiple AI calls at the same time
     const RATE_LIMIT_MS = 8000; // 8 seconds between AI calls
     let lastProcessedTime = 0;
